@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <!-- SEO Meta Tags -->
+    <title>Servi-Moto | Sistema de Inventario</title>
+    <meta name="description" content="Sistema web profesional para gestión de inventario y órdenes de trabajo de talleres de motocicletas. Control interno, inventario, órdenes de reparación.">
+    <meta name="keywords" content="taller mecánico, motocicletas, gestión, inventario, órdenes de trabajo, repuestos, accesorios, gestión taller, software taller">
+    <meta name="author" content="Servi-Moto">
+    <meta name="robots" content="index, follow">
+    <meta name="language" content="Spanish">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://servi-moto.vercel.app/">
+    <meta property="og:title" content="Servi-Moto | Sistema de Gestión para Taller Mecánico">
+    <meta property="og:description" content="Sistema web profesional para gestión de inventario y órdenes de trabajo de talleres de motocicletas.">
+    <meta property="og:image" content="/android-chrome-512x512.png">
+    <meta property="og:site_name" content="Servi-Moto">
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://servi-moto.vercel.app/">
+    <meta property="twitter:title" content="Servi-Moto | Sistema de Gestión para Taller Mecánico">
+    <meta property="twitter:description" content="Sistema web profesional para gestión de inventario y órdenes de trabajo de talleres de motocicletas.">
+    <meta property="twitter:image" content="/android-chrome-512x512.png">
+    
+    <!-- PWA Configuration -->
+    <meta name="application-name" content="Servi-Moto">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Servi-Moto">
+    <meta name="format-detection" content="telephone=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="msapplication-TileColor" content="#3b82f6">
+    <meta name="msapplication-tap-highlight" content="no">
+    <meta name="theme-color" content="#3b82f6">
+    
+    <!-- Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+    
+    <!-- Icons for various platforms -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    
+    <!-- iOS Splash Screens -->
+    <link rel="apple-touch-startup-image" href="/apple-splash-2048-2732.jpg" media="(device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+    <link rel="apple-touch-startup-image" href="/apple-splash-2732-2048.jpg" media="(device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)">
+    
+    <!-- Preconnect to improve performance -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://servi-moto.vercel.app/">
+    
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Servi-Moto",
+      "description": "Sistema de gestión para taller mecánico de motocicletas",
+      "applicationCategory": "BusinessApplication",
+      "operatingSystem": "Web",
+      "url": "https://servi-moto.vercel.app/",
+      "author": {
+        "@type": "Organization",
+        "name": "Servi-Moto"
+      },
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      }
+    }
+    </script>
+    
+    <title>Servi-Moto</title>
+  </head>
+  <body class="font-sans">
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+    
+    <!-- PWA Service Worker Registration -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/service-worker.js')
+            .then(registration => {
+              console.log('✅ ServiceWorker registrado con éxito:', registration.scope);
+            })
+            .catch(error => {
+              console.log('❌ Error registrando ServiceWorker:', error);
+            });
+        });
+      }
+    </script>
+  </body>
+</html>
