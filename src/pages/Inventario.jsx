@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from '../utils/supabase'
-import { ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 import * as XLSX from 'xlsx'
 import { 
   MagnifyingGlassIcon,
@@ -10,7 +9,9 @@ import {
   PlusIcon,
   AdjustmentsHorizontalIcon,
   ChevronDownIcon,
-  ChevronUpIcon
+  ChevronUpIcon,
+  ExclamationTriangleIcon,
+  CubeIcon
 } from '@heroicons/react/24/outline'
 
 const Inventario = () => {
@@ -24,6 +25,7 @@ const Inventario = () => {
   const [stockFilter, setStockFilter] = useState('todos')
   const [sortConfig, setSortConfig] = useState({ key: 'nombre', direction: 'asc' })
   const [showFilters, setShowFilters] = useState(false)
+  const [viewMode, setViewMode] = useState('table') // 'table' o 'cards'
   const [form, setForm] = useState({
     nombre: '',
     categoria: 'Repuesto',
@@ -228,6 +230,208 @@ const Inventario = () => {
     setSortConfig({ key: 'nombre', direction: 'asc' })
   }
 
+  // Vista de tarjetas para móviles
+  const ProductCard = ({ producto }) => (
+    <div className={`card mb-3 border-l-4 ${
+      producto.stock < producto.stock_minimo 
+        ? 'border-l-red-500 bg-red-50 dark:bg-red-900/20' 
+        : 'border-l-blue-500'
+    }`}>
+      <div className="flex justify-between items-start">
+        <div className="flex-1">
+          <div className="flex items-center gap-2 mb-2">
+            <CubeIcon className="w-5 h-5 text-gray-500" />
+            <h3 className="font-semibold text-gray-900 dark:text-white">
+              {producto.nombre}
+            </h3>
+          </div>
+          
+          <div className="grid grid-cols-2 gap-2 text-sm mb-3">
+            <div>
+              <span className="text-gray-500 dark:text-gray-400">Categoría:</span>
+              <span className={`ml-2 badge ${
+                producto.categoria === 'Repuesto' ? 'badge-primary' : 'badge-success'
+              }`}>
+                {producto.categoria}
+              </span>
+            </div>
+            <div>
+              <span className="text-gray-500 dark:text-gray-400">Stock:</span>
+              <span className={`ml-2 font-bold ${
+                producto.stock < producto.stock_minimo 
+                  ? 'text-red-600 dark:text-red-400' 
+                  : 'text-green-600 dark:text-green-400'
+              }`}>
+                {producto.stock}
+              </span>
+            </div>
+          </div>
+
+          <div className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
+            {producto.marca && <div>Marca: {producto.marca}</div>}
+            {producto.modelo && <div>Modelo: {producto.modelo}</div>}
+            <div>Stock mínimo: {producto.stock_minimo}</div>
+          </div>
+        </div>
+
+        <div className="flex flex-col items-end gap-2">
+          {producto.stock < producto.stock_minimo && (
+            <div className="flex items-center gap-1 text-xs text-red-600 dark:text-red-400">
+              <ExclamationTriangleIcon className="w-4 h-4" />
+              <span>¡Bajo stock!</span>
+            </div>
+          )}
+          
+          <div className="flex gap-2">
+            <button
+              onClick={() => handleEdit(producto)}
+              className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 text-sm"
+            >
+              Editar
+            </button>
+            <button
+              onClick={() => handleDelete(producto.id)}
+              className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 text-sm"
+            >
+              Eliminar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+
+  // Vista de tabla para desktop
+  const ProductTable = () => (
+    <div className="hidden lg:block overflow-x-auto">
+      <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+        <thead className="bg-gray-50 dark:bg-gray-800">
+          <tr>
+            <th 
+              className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer"
+              onClick={() => handleSort('nombre')}
+            >
+              <div className="flex items-center gap-1">
+                Producto
+                {sortConfig.key === 'nombre' && (
+                  sortConfig.direction === 'asc' ? 
+                    <ChevronUpIcon className="w-4 h-4" /> : 
+                    <ChevronDownIcon className="w-4 h-4" />
+                )}
+              </div>
+            </th>
+            <th 
+              className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer"
+              onClick={() => handleSort('categoria')}
+            >
+              <div className="flex items-center gap-1">
+                Categoría
+                {sortConfig.key === 'categoria' && (
+                  sortConfig.direction === 'asc' ? 
+                    <ChevronUpIcon className="w-4 h-4" /> : 
+                    <ChevronDownIcon className="w-4 h-4" />
+                )}
+              </div>
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              Marca/Modelo
+            </th>
+            <th 
+              className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer"
+              onClick={() => handleSort('stock')}
+            >
+              <div className="flex items-center gap-1">
+                Stock
+                {sortConfig.key === 'stock' && (
+                  sortConfig.direction === 'asc' ? 
+                    <ChevronUpIcon className="w-4 h-4" /> : 
+                    <ChevronDownIcon className="w-4 h-4" />
+                )}
+              </div>
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              Mínimo
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              Acciones
+            </th>
+          </tr>
+        </thead>
+        <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
+          {filteredProductos.map((producto) => (
+            <tr 
+              key={producto.id} 
+              className={`hover:bg-gray-50 dark:hover:bg-gray-800 ${
+                producto.stock < producto.stock_minimo 
+                  ? 'bg-red-50 dark:bg-red-900/20' 
+                  : ''
+              }`}
+            >
+              <td className="px-6 py-4 whitespace-nowrap">
+                <div className="font-medium text-gray-900 dark:text-white">
+                  {producto.nombre}
+                </div>
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap">
+                <span className={`badge ${
+                  producto.categoria === 'Repuesto'
+                    ? 'badge-primary'
+                    : 'badge-success'
+                }`}>
+                  {producto.categoria}
+                </span>
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap">
+                <div className="text-sm text-gray-600 dark:text-gray-400">
+                  <div>{producto.marca || '-'}</div>
+                  <div>{producto.modelo || '-'}</div>
+                </div>
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap">
+                <div className="flex items-center">
+                  <span className={`font-medium ${
+                    producto.stock < producto.stock_minimo 
+                      ? 'text-red-600 dark:text-red-400' 
+                      : 'text-gray-900 dark:text-white'
+                  }`}>
+                    {producto.stock}
+                  </span>
+                  {producto.stock < producto.stock_minimo && (
+                    <span className="ml-2 text-xs text-red-600 dark:text-red-400 flex items-center gap-1">
+                      <ExclamationTriangleIcon className="w-3 h-3" />
+                      ¡Bajo stock!
+                    </span>
+                  )}
+                </div>
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap">
+                <span className="text-gray-600 dark:text-gray-400">
+                  {producto.stock_minimo}
+                </span>
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => handleEdit(producto)}
+                    className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
+                  >
+                    Editar
+                  </button>
+                  <button
+                    onClick={() => handleDelete(producto.id)}
+                    className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                  >
+                    Eliminar
+                  </button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+
   if (loading) {
     return (
       <div className="page-container">
@@ -246,7 +450,7 @@ const Inventario = () => {
           <div>
             <h1 className="page-title">Inventario</h1>
             <p className="page-subtitle">
-              Gestiona repuestos y accesorios ({filteredProductos.length} productos)
+              {filteredProductos.length} productos encontrados
             </p>
           </div>
           <div className="flex gap-2">
@@ -255,8 +459,7 @@ const Inventario = () => {
               className="btn-secondary flex items-center gap-2"
             >
               <ArrowDownTrayIcon className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span className="hidden sm:inline">Exportar Excel</span>
-              <span className="sm:hidden">Exportar</span>
+              <span className="hidden sm:inline">Exportar</span>
             </button>
             <button
               onClick={() => {
@@ -267,7 +470,7 @@ const Inventario = () => {
               className="btn-primary flex items-center gap-2"
             >
               <PlusIcon className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span className="hidden sm:inline">Nuevo Producto</span>
+              <span className="hidden sm:inline">Nuevo</span>
               <span className="sm:hidden">Nuevo</span>
             </button>
           </div>
@@ -276,13 +479,13 @@ const Inventario = () => {
 
       {/* Filtros */}
       <div className="card mb-6">
-        {/* Barra de búsqueda */}
+        {/* Barra de búsqueda y botón filtros móvil */}
         <div className="flex items-center gap-2 mb-4">
           <div className="relative flex-1">
             <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
             <input
               type="text"
-              placeholder="Buscar por nombre, marca o modelo..."
+              placeholder="Buscar productos..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="input-field pl-9 sm:pl-10"
@@ -297,19 +500,17 @@ const Inventario = () => {
             )}
           </div>
           
-          {/* Botón mostrar/ocultar filtros en móvil */}
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className="md:hidden btn-secondary p-2"
+            className="lg:hidden btn-secondary p-2"
           >
             <AdjustmentsHorizontalIcon className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Filtros avanzados */}
-        <div className={`${showFilters ? 'block' : 'hidden md:block'}`}>
+        {/* Filtros avanzados - Visible en desktop, colapsable en móvil */}
+        <div className={`${showFilters ? 'block' : 'hidden lg:block'}`}>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-            {/* Filtro por categoría */}
             <div>
               <label className="input-label">Categoría</label>
               <select
@@ -317,29 +518,27 @@ const Inventario = () => {
                 onChange={(e) => setFilterCategoria(e.target.value)}
                 className="input-field"
               >
-                <option value="todos">Todas las categorías</option>
+                <option value="todos">Todas</option>
                 <option value="Repuesto">Repuesto</option>
                 <option value="Accesorio">Accesorio</option>
               </select>
             </div>
 
-            {/* Filtro por stock */}
             <div>
-              <label className="input-label">Estado de stock</label>
+              <label className="input-label">Estado</label>
               <select
                 value={stockFilter}
                 onChange={(e) => setStockFilter(e.target.value)}
                 className="input-field"
               >
-                <option value="todos">Todos los estados</option>
+                <option value="todos">Todos</option>
                 <option value="bajo">Stock bajo</option>
                 <option value="normal">Stock normal</option>
               </select>
             </div>
 
-            {/* Ordenar por */}
             <div>
-              <label className="input-label">Ordenar por</label>
+              <label className="input-label">Ordenar</label>
               <select
                 value={sortConfig.key}
                 onChange={(e) => handleSort(e.target.value)}
@@ -347,11 +546,10 @@ const Inventario = () => {
               >
                 <option value="nombre">Nombre</option>
                 <option value="categoria">Categoría</option>
-                <option value="stock">Nivel de stock</option>
+                <option value="stock">Stock</option>
               </select>
             </div>
 
-            {/* Botones de acción */}
             <div className="flex items-end gap-2">
               <button
                 onClick={clearFilters}
@@ -395,177 +593,133 @@ const Inventario = () => {
         </div>
       </div>
 
-      {/* Tabla de productos */}
-      <div className="card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead className="table-header">
-              <tr>
-                <th 
-                  className="table-cell cursor-pointer"
-                  onClick={() => handleSort('nombre')}
-                >
-                  <div className="flex items-center gap-1">
-                    Producto
-                    {sortConfig.key === 'nombre' && (
-                      sortConfig.direction === 'asc' ? 
-                        <ChevronUpIcon className="w-4 h-4" /> : 
-                        <ChevronDownIcon className="w-4 h-4" />
-                    )}
-                  </div>
-                </th>
-                <th 
-                  className="table-cell cursor-pointer hidden sm:table-cell"
-                  onClick={() => handleSort('categoria')}
-                >
-                  <div className="flex items-center gap-1">
-                    Categoría
-                    {sortConfig.key === 'categoria' && (
-                      sortConfig.direction === 'asc' ? 
-                        <ChevronUpIcon className="w-4 h-4" /> : 
-                        <ChevronDownIcon className="w-4 h-4" />
-                    )}
-                  </div>
-                </th>
-                <th className="table-cell hidden md:table-cell">Marca/Modelo</th>
-                <th 
-                  className="table-cell cursor-pointer"
-                  onClick={() => handleSort('stock')}
-                >
-                  <div className="flex items-center gap-1">
-                    Stock
-                    {sortConfig.key === 'stock' && (
-                      sortConfig.direction === 'asc' ? 
-                        <ChevronUpIcon className="w-4 h-4" /> : 
-                        <ChevronDownIcon className="w-4 h-4" />
-                    )}
-                  </div>
-                </th>
-                <th className="table-cell hidden lg:table-cell">Mínimo</th>
-                <th className="table-cell">Acciones</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-              {filteredProductos.length === 0 ? (
-                <tr>
-                  <td colSpan="6" className="px-6 py-8 text-center text-gray-500">
-                    No se encontraron productos con los filtros aplicados
-                  </td>
-                </tr>
-              ) : (
-                filteredProductos.map((producto) => (
-                  <tr 
-                    key={producto.id} 
-                    className={`table-row ${
-                      producto.stock < producto.stock_minimo 
-                        ? 'bg-red-50 dark:bg-red-900/20' 
-                        : ''
-                    }`}
-                  >
-                    <td className="table-cell">
-                      <div className="font-medium text-gray-900 dark:text-white">
-                        {producto.nombre}
-                      </div>
-                      <div className="sm:hidden text-xs text-gray-500 mt-1">
-                        {producto.categoria}
-                      </div>
-                    </td>
-                    <td className="table-cell hidden sm:table-cell">
-                      <span className={`badge ${
-                        producto.categoria === 'Repuesto'
-                          ? 'badge-primary'
-                          : 'badge-success'
-                      }`}>
-                        {producto.categoria}
-                      </span>
-                    </td>
-                    <td className="table-cell hidden md:table-cell">
-                      <div className="text-sm text-gray-600 dark:text-gray-400">
-                        <div>{producto.marca || '-'}</div>
-                        <div>{producto.modelo || '-'}</div>
-                      </div>
-                    </td>
-                    <td className="table-cell">
-                      <div className="flex items-center">
-                        <span className={`font-medium ${
-                          producto.stock < producto.stock_minimo 
-                            ? 'text-red-600 dark:text-red-400' 
-                            : 'text-gray-900 dark:text-white'
-                        }`}>
-                          {producto.stock}
-                        </span>
-                        {producto.stock < producto.stock_minimo && (
-                          <span className="ml-2 text-xs text-red-600 dark:text-red-400 flex items-center gap-1">
-                            <ExclamationTriangleIcon className="w-3 h-3" />
-                            ¡Bajo stock!
-                          </span>
-                        )}
-                      </div>
-                      <div className="lg:hidden text-xs text-gray-500 mt-1">
-                        Mín: {producto.stock_minimo}
-                      </div>
-                    </td>
-                    <td className="table-cell hidden lg:table-cell">
-                      <span className="text-gray-600 dark:text-gray-400">
-                        {producto.stock_minimo}
-                      </span>
-                    </td>
-                    <td className="table-cell">
-                      <div className="flex space-x-2">
-                        <button
-                          onClick={() => handleEdit(producto)}
-                          className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 text-sm"
-                        >
-                          Editar
-                        </button>
-                        <button
-                          onClick={() => handleDelete(producto.id)}
-                          className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 text-sm"
-                        >
-                          Eliminar
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+      {/* Contador de resultados */}
+      <div className="mb-4 flex justify-between items-center">
+        <div className="text-sm text-gray-600 dark:text-gray-400">
+          Mostrando {filteredProductos.length} productos
         </div>
+        <div className="lg:hidden flex gap-2">
+          <button
+            onClick={() => setViewMode('cards')}
+            className={`px-3 py-1 rounded-lg text-sm ${viewMode === 'cards' ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}`}
+          >
+            Tarjetas
+          </button>
+          <button
+            onClick={() => setViewMode('table')}
+            className={`px-3 py-1 rounded-lg text-sm ${viewMode === 'table' ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}`}
+          >
+            Tabla
+          </button>
+        </div>
+      </div>
+
+      {/* Vista de productos */}
+      <div className="card overflow-hidden">
+        {filteredProductos.length === 0 ? (
+          <div className="text-center py-12">
+            <CubeIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+              No se encontraron productos
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400">
+              Intenta ajustar los filtros o agrega un nuevo producto
+            </p>
+            <button
+              onClick={() => setShowModal(true)}
+              className="mt-4 btn-primary"
+            >
+              <PlusIcon className="w-4 h-4 inline mr-2" />
+              Agregar primer producto
+            </button>
+          </div>
+        ) : (
+          <>
+            {/* Vista de tarjetas para móviles */}
+            <div className={`lg:hidden ${viewMode === 'cards' ? 'block' : 'hidden'}`}>
+              {filteredProductos.map((producto) => (
+                <ProductCard key={producto.id} producto={producto} />
+              ))}
+            </div>
+
+            {/* Vista de tabla para móviles (simple) */}
+            <div className={`lg:hidden ${viewMode === 'table' ? 'block' : 'hidden'}`}>
+              <div className="overflow-x-auto">
+                <table className="min-w-full">
+                  <thead>
+                    <tr className="border-b border-gray-200 dark:border-gray-700">
+                      <th className="py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Producto</th>
+                      <th className="py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Stock</th>
+                      <th className="py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredProductos.map((producto) => (
+                      <tr key={producto.id} className="border-b border-gray-100 dark:border-gray-800">
+                        <td className="py-3">
+                          <div className="font-medium text-gray-900 dark:text-white">
+                            {producto.nombre}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {producto.categoria}
+                          </div>
+                        </td>
+                        <td className="py-3">
+                          <div className={`font-bold ${
+                            producto.stock < producto.stock_minimo 
+                              ? 'text-red-600 dark:text-red-400' 
+                              : 'text-gray-900 dark:text-white'
+                          }`}>
+                            {producto.stock}
+                          </div>
+                        </td>
+                        <td className="py-3">
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleEdit(producto)}
+                              className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 text-sm"
+                            >
+                              Editar
+                            </button>
+                            <button
+                              onClick={() => handleDelete(producto.id)}
+                              className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 text-sm"
+                            >
+                              Eliminar
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Vista de tabla para desktop */}
+            <ProductTable />
+          </>
+        )}
 
         {/* Paginación */}
-        <div className="px-4 sm:px-6 py-4 border-t border-gray-200 dark:border-gray-700">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-            <div className="text-sm text-gray-700 dark:text-gray-400 mb-2 sm:mb-0">
-              Mostrando <span className="font-medium">{filteredProductos.length}</span> de{' '}
-              <span className="font-medium">{productos.length}</span> productos
-            </div>
-            <div className="flex items-center space-x-2">
-              <button
-                className="btn-secondary px-3 py-1 text-sm disabled:opacity-50"
-                disabled
-              >
-                Anterior
-              </button>
-              <span className="text-sm text-gray-700 dark:text-gray-400">1 de 1</span>
-              <button
-                className="btn-secondary px-3 py-1 text-sm disabled:opacity-50"
-                disabled
-              >
-                Siguiente
-              </button>
+        {filteredProductos.length > 0 && (
+          <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+              <div className="text-sm text-gray-700 dark:text-gray-400 mb-2 sm:mb-0">
+                {filteredProductos.length} de {productos.length} productos
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Modal para crear/editar producto */}
       {showModal && (
-        <div className="modal-overlay">
-          <div className="modal-content">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="p-4 sm:p-6">
-              <div className="flex justify-between items-center mb-4 sm:mb-6">
-                <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                   {editingProduct ? 'Editar Producto' : 'Nuevo Producto'}
                 </h3>
                 <button
@@ -576,34 +730,32 @@ const Inventario = () => {
                 </button>
               </div>
               
-              <form onSubmit={handleSubmit} className="form-section">
-                <div className="form-grid">
-                  <div>
-                    <label className="input-label">Nombre *</label>
-                    <input
-                      type="text"
-                      required
-                      value={form.nombre}
-                      onChange={(e) => setForm({...form, nombre: e.target.value})}
-                      className="input-field"
-                      placeholder="Ej: Filtro de aceite"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="input-label">Categoría *</label>
-                    <select
-                      value={form.categoria}
-                      onChange={(e) => setForm({...form, categoria: e.target.value})}
-                      className="input-field"
-                    >
-                      <option value="Repuesto">Repuesto</option>
-                      <option value="Accesorio">Accesorio</option>
-                    </select>
-                  </div>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <label className="input-label">Nombre *</label>
+                  <input
+                    type="text"
+                    required
+                    value={form.nombre}
+                    onChange={(e) => setForm({...form, nombre: e.target.value})}
+                    className="input-field"
+                    placeholder="Filtro de aceite, cadena, etc."
+                  />
                 </div>
 
-                <div className="form-grid">
+                <div>
+                  <label className="input-label">Categoría *</label>
+                  <select
+                    value={form.categoria}
+                    onChange={(e) => setForm({...form, categoria: e.target.value})}
+                    className="input-field"
+                  >
+                    <option value="Repuesto">Repuesto</option>
+                    <option value="Accesorio">Accesorio</option>
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="input-label">Marca</label>
                     <input
@@ -611,22 +763,22 @@ const Inventario = () => {
                       value={form.marca}
                       onChange={(e) => setForm({...form, marca: e.target.value})}
                       className="input-field"
-                      placeholder="Ej: Honda"
+                      placeholder="Honda, Yamaha..."
                     />
                   </div>
                   <div>
-                    <label className="input-label">Modelo compatible</label>
+                    <label className="input-label">Modelo</label>
                     <input
                       type="text"
                       value={form.modelo}
                       onChange={(e) => setForm({...form, modelo: e.target.value})}
                       className="input-field"
-                      placeholder="Ej: CBR 600"
+                      placeholder="CBR 600, R6..."
                     />
                   </div>
                 </div>
 
-                <div className="form-grid">
+                <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="input-label">Stock actual *</label>
                     <input
@@ -651,17 +803,17 @@ const Inventario = () => {
                   </div>
                 </div>
 
-                <div className="flex justify-end space-x-3 pt-4 sm:pt-6">
+                <div className="flex justify-end space-x-3 pt-4">
                   <button
                     type="button"
                     onClick={() => setShowModal(false)}
-                    className="btn-secondary px-4 sm:px-6"
+                    className="btn-secondary px-4"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
-                    className="btn-primary px-4 sm:px-6"
+                    className="btn-primary px-4"
                   >
                     {editingProduct ? 'Actualizar' : 'Crear'}
                   </button>
