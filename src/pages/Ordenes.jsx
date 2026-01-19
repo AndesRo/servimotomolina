@@ -300,62 +300,68 @@ const Ordenes = () => {
     }
   }
 
-  // Función para compartir por WhatsApp
-  const shareViaWhatsApp = (orden) => {
-    if (!orden.cliente_telefono) {
-      alert('❌ El cliente no tiene número de teléfono registrado')
-      return
-    }
+ const shareViaWhatsApp = (orden) => {
+  if (!orden.cliente_telefono) {
+    alert('❌ El cliente no tiene número de teléfono registrado')
+    return
+  }
 
-    // Limpiar número de teléfono
-    const phoneNumber = orden.cliente_telefono.replace(/\D/g, '')
-    
-    // Validar formato
-    if (!phoneNumber || phoneNumber.length < 8) {
-      alert('❌ Número de teléfono inválido')
-      return
-    }
+  // Limpiar a solo dígitos
+  let phone = orden.cliente_telefono.replace(/\D/g, '')
 
-    // Preparar mensaje
-    const fecha = new Date(orden.created_at).toLocaleDateString('es-ES', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric'
-    })
+  // Quitar código país si viene incluido
+  if (phone.startsWith('56')) {
+    phone = phone.substring(2)
+  }
 
-    const repuestosText = orden.ordenes_repuestos && orden.ordenes_repuestos.length > 0 
-      ? `\n\n🔧 *Repuestos utilizados:*\n${orden.ordenes_repuestos.map(rep => 
-          `• ${rep.cantidad}x ${rep.inventario.nombre}`
-        ).join('\n')}`
+  // Quitar cero inicial
+  if (phone.startsWith('0')) {
+    phone = phone.substring(1)
+  }
+
+  // Validar número chileno (9 + 8 dígitos)
+  if (phone.length !== 9) {
+    alert('❌ Número de teléfono inválido')
+    return
+  }
+
+  // Formato WhatsApp FINAL
+  const phoneNumber = `56${phone}`
+
+  const fecha = new Date(orden.created_at).toLocaleDateString('es-CL', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  })
+
+  const repuestosText =
+    orden.ordenes_repuestos?.length
+      ? `\n\n🔧 *Repuestos utilizados:*\n${orden.ordenes_repuestos
+          .map(rep => `• ${rep.cantidad}x ${rep.inventario.nombre}`)
+          .join('\n')}`
       : ''
 
-    const message = `¡Hola ${orden.cliente_nombre}! 👋
+  const message = `Hola ${orden.cliente_nombre}!
 
-📋 *Información de tu orden en Servi-Moto:*
+INFORMACION DE TU ORDEN - SERVI-MOTO
 
-*Orden:* #${orden.id.substring(0, 8).toUpperCase()}
-*Fecha:* ${fecha}
-*Moto:* ${orden.moto_marca || 'No especificada'} ${orden.moto_modelo || ''}
-*Problema:* ${orden.problema || 'No especificado'}
-*Estado:* ${orden.estado}${repuestosText}
+Orden: #${orden.id.substring(0, 8).toUpperCase()}
+Fecha: ${fecha}
+Moto: ${orden.moto_marca} ${orden.moto_modelo}
+Problema: ${orden.problema}
+Estado: ${orden.estado}${repuestosText}
 
-📍 *Taller Servi-Moto*
-🕐 Horario: Lunes a Viernes 8:00 - 18:00
+Taller Servi-Moto
+Horario: Lunes a Viernes 8:00 - 18:00
 
-¡Gracias por confiar en nosotros! 🏍️✨
+Gracias por confiar en nosotros.
+Mensaje generado automaticamente por el sistema Servi-Moto`
 
-_Este mensaje fue generado automáticamente por el sistema Servi-Moto_`
 
-    // Codificar mensaje para URL
-    const encodedMessage = encodeURIComponent(message)
-    
-    // Crear URL de WhatsApp (con código de país para México: +52)
-    const countryCode = '52'
-    const whatsappUrl = `https://wa.me/${countryCode}${phoneNumber}?text=${encodedMessage}`
-    
-    // Abrir en nueva ventana
-    window.open(whatsappUrl, '_blank', 'noopener,noreferrer')
-  }
+  const url = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`
+  window.open(url, '_blank')
+}
+
 
   const handleSubmit = async (e) => {
     e.preventDefault()

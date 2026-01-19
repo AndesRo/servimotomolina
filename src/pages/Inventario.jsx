@@ -521,6 +521,8 @@ const Inventario = () => {
                 <option value="todos">Todas</option>
                 <option value="Repuesto">Repuesto</option>
                 <option value="Accesorio">Accesorio</option>
+                <option value="Lubricante">Lubricante</option>
+                <option value="Bateria">Bateria</option>
               </select>
             </div>
 
@@ -752,6 +754,8 @@ const Inventario = () => {
                   >
                     <option value="Repuesto">Repuesto</option>
                     <option value="Accesorio">Accesorio</option>
+                    <option value="Lubricante">Lubricante</option>
+                    <option value="Bateria">Bateria</option>
                   </select>
                 </div>
 
