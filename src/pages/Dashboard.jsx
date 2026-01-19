@@ -140,7 +140,7 @@ const Dashboard = () => {
       <div className="page-header">
         <h1 className="page-title">Panel de Control</h1>
         <p className="page-subtitle">
-          Resumen general del taller • Actualizado hace unos momentos
+   
         </p>
       </div>
 
