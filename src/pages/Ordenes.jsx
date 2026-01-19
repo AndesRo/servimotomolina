@@ -262,7 +262,7 @@ const exportToPDF = async (orden) => {
 
         <!-- Pie de página -->
         <div style="margin-top: 50px; padding-top: 20px; border-top: 2px solid #1e40af; text-align: center; font-size: 11px; color: #6b7280;">
-          <p>Servi-Moto • Taller Mecánico Especializado • Tel: +1 234 567 8900</p>
+          <p>Servi-Moto • Molina• Tel: +1 234 567 8900</p>
           <p>www.servi-moto.com • info@servi-moto.com</p>
           <p>Orden generada automáticamente el ${new Date().toLocaleDateString('es-ES')}</p>
         </div>
