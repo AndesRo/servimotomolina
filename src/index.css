@@ -2,69 +2,484 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer components {
-  .btn-primary {
-    @apply bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors;
+/* Estilos base personalizados */
+@layer base {
+  body {
+    @apply antialiased text-gray-900 dark:text-gray-100;
   }
   
-  .btn-secondary {
-    @apply bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 font-medium py-2 px-4 rounded-lg transition-colors;
+  /* Mejorar scrollbar */
+  ::-webkit-scrollbar {
+    @apply w-2 h-2;
   }
   
-  .btn-danger {
-    @apply bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors;
+  ::-webkit-scrollbar-track {
+    @apply bg-gray-100 dark:bg-gray-800;
   }
   
-  .card {
-    @apply bg-white dark:bg-gray-800 rounded-lg shadow-md p-6;
-  }
-  
-  .input-field {
-    @apply w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500;
-  }
-  
-  .table-header {
-    @apply bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300;
-  }
-  
-  .table-row {
-    @apply border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700;
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gray-300 dark:bg-gray-600 rounded-full hover:bg-gray-400 dark:hover:bg-gray-500;
   }
 }
 
+/* Componentes reutilizables responsivos */
+@layer components {
+  /* Botones responsivos */
+  .btn-primary {
+    @apply bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 
+           text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 
+           active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 
+           disabled:opacity-50 disabled:cursor-not-allowed
+           text-sm sm:text-base;
+  }
+  
+  .btn-secondary {
+    @apply bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 
+           text-gray-800 dark:text-gray-200 font-medium py-2 px-4 rounded-lg transition-all duration-200 
+           active:scale-95 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 
+           disabled:opacity-50 disabled:cursor-not-allowed
+           text-sm sm:text-base;
+  }
+  
+  .btn-danger {
+    @apply bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800 
+           text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 
+           active:scale-95 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 
+           disabled:opacity-50 disabled:cursor-not-allowed
+           text-sm sm:text-base;
+  }
+  
+  .btn-success {
+    @apply bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800 
+           text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 
+           active:scale-95 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 
+           disabled:opacity-50 disabled:cursor-not-allowed
+           text-sm sm:text-base;
+  }
+  
+  /* Cards responsivas */
+  .card {
+    @apply bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 
+           p-4 sm:p-6 transition-all duration-200 hover:shadow-md;
+  }
+  
+  .card-flat {
+    @apply bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6;
+  }
+  
+  /* Inputs responsivos */
+  .input-field {
+    @apply w-full px-3 py-2 sm:py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg 
+           bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none 
+           focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200
+           text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  
+  .input-label {
+    @apply block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 sm:mb-2;
+  }
+  
+  /* Tablas responsivas */
+  .table-container {
+    @apply overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700 
+           -mx-2 sm:-mx-0;
+  }
+  
+  .table-header {
+    @apply bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 
+           text-left text-xs sm:text-sm font-medium;
+  }
+  
+  .table-cell {
+    @apply px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm;
+  }
+  
+  .table-row {
+    @apply border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50 
+           transition-colors duration-150;
+  }
+  
+  /* Badges responsivos */
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+  
+  .badge-primary {
+    @apply bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300;
+  }
+  
+  .badge-success {
+    @apply bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300;
+  }
+  
+  .badge-warning {
+    @apply bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300;
+  }
+  
+  .badge-danger {
+    @apply bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300;
+  }
+  
+  /* Layout responsivo */
+  .container-responsive {
+    @apply px-3 sm:px-4 md:px-6 lg:px-8 mx-auto max-w-7xl;
+  }
+  
+  .page-container {
+    @apply p-3 sm:p-4 md:p-6;
+  }
+  
+  .page-header {
+    @apply mb-4 sm:mb-6;
+  }
+  
+  .page-title {
+    @apply text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 dark:text-white;
+  }
+  
+  .page-subtitle {
+    @apply text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1 sm:mt-2;
+  }
+  
+  /* Grid responsivo */
+  .grid-responsive {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 md:gap-6;
+  }
+  
+  /* Formularios responsivos */
+  .form-grid {
+    @apply grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4;
+  }
+  
+  .form-section {
+    @apply space-y-3 sm:space-y-4;
+  }
+  
+  /* Modal responsivo */
+  .modal-overlay {
+    @apply fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center 
+           p-3 sm:p-4 z-50;
+  }
+  
+  .modal-content {
+    @apply bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-2xl 
+           max-h-[90vh] overflow-y-auto mx-2 sm:mx-0;
+  }
+  
+  /* Sidebar responsivo */
+  .sidebar {
+    @apply hidden md:block w-64 bg-gray-50 dark:bg-gray-900 min-h-screen 
+           border-r border-gray-200 dark:border-gray-800;
+  }
+  
+  .mobile-sidebar {
+    @apply fixed inset-0 z-40 md:hidden;
+  }
+  
+  /* Navbar responsivo */
+  .navbar {
+    @apply bg-white dark:bg-gray-900 shadow-sm border-b border-gray-200 dark:border-gray-800 
+           sticky top-0 z-30;
+  }
+  
+  /* Alertas responsivas */
+  .alert {
+    @apply p-3 sm:p-4 rounded-lg border text-sm sm:text-base;
+  }
+  
+  .alert-success {
+    @apply bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 
+           text-green-800 dark:text-green-300;
+  }
+  
+  .alert-error {
+    @apply bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 
+           text-red-800 dark:text-red-300;
+  }
+  
+  .alert-warning {
+    @apply bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800 
+           text-yellow-800 dark:text-yellow-300;
+  }
+  
+  .alert-info {
+    @apply bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 
+           text-blue-800 dark:text-blue-300;
+  }
+}
 
+/* Utilidades personalizadas */
+@layer utilities {
+  /* Animaciones */
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  
+  @keyframes slide-in {
+    from { transform: translateY(-10px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  
+  @keyframes scale-in {
+    from { transform: scale(0.95); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+  
+  .animate-fade-in {
+    animation: fade-in 0.3s ease-out;
+  }
+  
+  .animate-slide-in {
+    animation: slide-in 0.3s ease-out;
+  }
+  
+  .animate-scale-in {
+    animation: scale-in 0.2s ease-out;
+  }
+  
+  /* Texto truncado responsivo */
+  .truncate-1 {
+    @apply overflow-hidden text-ellipsis whitespace-nowrap;
+  }
+  
+  .truncate-2 {
+    @apply overflow-hidden text-ellipsis line-clamp-2;
+  }
+  
+  .truncate-3 {
+    @apply overflow-hidden text-ellipsis line-clamp-3;
+  }
+  
+  /* Alturas responsivas */
+  .min-h-screen-safe {
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+  
+  .h-screen-safe {
+    height: 100vh;
+    height: 100dvh;
+  }
+  
+  /* Scroll suave */
+  .scroll-smooth {
+    scroll-behavior: smooth;
+  }
+  
+  /* Esconder scrollbar pero mantener funcionalidad */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  
+  /* Glassmorphism */
+  .glass {
+    @apply backdrop-blur-md bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10;
+  }
+  
+  /* Gradientes */
+  .gradient-primary {
+    @apply bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800;
+  }
+  
+  .gradient-success {
+    @apply bg-gradient-to-r from-green-600 to-green-700 dark:from-green-700 dark:to-green-800;
+  }
+  
+  .gradient-warning {
+    @apply bg-gradient-to-r from-yellow-600 to-yellow-700 dark:from-yellow-700 dark:to-yellow-800;
+  }
+  
+  .gradient-danger {
+    @apply bg-gradient-to-r from-red-600 to-red-700 dark:from-red-700 dark:to-red-800;
+  }
+  
+  /* Sombreado responsivo */
+  .shadow-hover {
+    @apply transition-shadow duration-200 hover:shadow-lg;
+  }
+  
+  /* Transformaciones responsivas */
+  .transform-hover {
+    @apply transition-transform duration-200 hover:-translate-y-0.5;
+  }
+  
+  /* Opacidad responsiva */
+  .opacity-hover {
+    @apply transition-opacity duration-200 hover:opacity-90;
+  }
+}
 
-/* Estilos para PDF */
+/* Estilos responsivos específicos */
+@media (max-width: 640px) {
+  /* Mejoras para móviles */
+  .mobile-stack {
+    @apply flex-col space-y-3;
+  }
+  
+  .mobile-full {
+    @apply w-full;
+  }
+  
+  .mobile-text-center {
+    @apply text-center;
+  }
+  
+  .mobile-padding {
+    @apply p-3;
+  }
+  
+  /* Tablas en móviles */
+  .mobile-table {
+    @apply block;
+  }
+  
+  .mobile-table thead {
+    @apply hidden;
+  }
+  
+  .mobile-table tbody,
+  .mobile-table tr,
+  .mobile-table td {
+    @apply block;
+  }
+  
+  .mobile-table tr {
+    @apply mb-4 border rounded-lg p-3;
+  }
+  
+  .mobile-table td {
+    @apply text-right px-0 py-2 border-b last:border-b-0 relative;
+  }
+  
+  .mobile-table td::before {
+    content: attr(data-label);
+    @apply absolute left-0 top-2 font-medium text-gray-700 dark:text-gray-300;
+  }
+}
+
+@media (max-width: 768px) {
+  /* Mejoras para tablets pequeñas */
+  .tablet-columns-1 {
+    @apply grid-cols-1;
+  }
+  
+  .tablet-stack {
+    @apply flex-col space-y-4;
+  }
+  
+  .tablet-hide {
+    @apply hidden;
+  }
+}
+
+@media (min-width: 1024px) {
+  /* Mejoras para desktop */
+  .desktop-show {
+    @apply block;
+  }
+  
+  .desktop-flex-row {
+    @apply flex-row;
+  }
+}
+
+/* Estilos para modo oscuro mejorado */
+@media (prefers-color-scheme: dark) {
+  .dark-img {
+    filter: brightness(0.8) contrast(1.2);
+  }
+}
+
+/* Estilos para impresión */
 @media print {
   .no-print {
     display: none !important;
+  }
+  
+  .print-only {
+    display: block !important;
   }
   
   body {
     background: white !important;
     color: black !important;
   }
+  
+  .card {
+    box-shadow: none !important;
+    border: 1px solid #e5e7eb !important;
+  }
 }
 
-/* Animaciones para botones de acción */
-.btn-action-pdf {
-  background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
-  color: white;
-  transition: all 0.3s ease;
+/* Corregir algunos problemas comunes de Tailwind */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
 }
 
-.btn-action-pdf:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+/* Mejorar legibilidad en móviles */
+p, li, span {
+  @apply text-sm sm:text-base;
 }
 
-.btn-action-whatsapp {
-  background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
-  color: white;
-  transition: all 0.3s ease;
+h1 {
+  @apply text-2xl sm:text-3xl md:text-4xl;
 }
 
-.btn-action-whatsapp:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);
+h2 {
+  @apply text-xl sm:text-2xl md:text-3xl;
+}
+
+h3 {
+  @apply text-lg sm:text-xl md:text-2xl;
+}
+
+h4 {
+  @apply text-base sm:text-lg md:text-xl;
+}
+
+/* Mejorar espaciado en móviles */
+.mobile-spacing > * + * {
+  @apply mt-3 sm:mt-4;
+}
+
+/* Asegurar que las imágenes sean responsivas */
+img, video {
+  @apply max-w-full h-auto;
+}
+
+/* Mejorar los formularios en móviles */
+input, textarea, select {
+  @apply text-base; /* Evitar zoom en iOS */
+}
+
+/* Optimizar botones para touch en móviles */
+button, .btn-primary, .btn-secondary {
+  @apply min-h-[44px] min-w-[44px]; /* Tamaño mínimo para touch */
+}
+
+/* Mejorar la experiencia en dispositivos con notch */
+@supports (padding: max(0px)) {
+  .safe-area-padding {
+    padding-left: max(env(safe-area-inset-left), 1rem);
+    padding-right: max(env(safe-area-inset-right), 1rem);
+  }
+  
+  .safe-area-margin {
+    margin-left: max(env(safe-area-inset-left), 1rem);
+    margin-right: max(env(safe-area-inset-right), 1rem);
+  }
 }
