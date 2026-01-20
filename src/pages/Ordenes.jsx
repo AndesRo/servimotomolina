@@ -176,7 +176,7 @@ const Ordenes = () => {
               Detalles de la Reparación
             </h2>
             <div style="margin-top: 15px;">
-              <strong>Problema Reportado:</strong>
+              <strong>Sevicio:</strong>
               <div style="background: #f9fafb; padding: 15px; border-radius: 8px; margin-top: 10px; border-left: 4px solid #3b82f6;">
                 ${orden.problema || 'No especificado'}
               </div>
@@ -348,7 +348,7 @@ INFORMACION DE TU ORDEN - SERVI-MOTO
 Orden: #${orden.id.substring(0, 8).toUpperCase()}
 Fecha: ${fecha}
 Moto: ${orden.moto_marca} ${orden.moto_modelo}
-Problema: ${orden.problema}
+Servicio: ${orden.problema}
 Estado: ${orden.estado}${repuestosText}
 
 Taller Servi-Moto
@@ -756,7 +756,7 @@ Mensaje generado automaticamente por el sistema Servi-Moto`
                   Moto
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Problema
+                  Servicio
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Estado
@@ -983,7 +983,7 @@ Mensaje generado automaticamente por el sistema Servi-Moto`
                 </div>
 
                 <div>
-                  <label className="input-label">Problema reportado *</label>
+                  <label className="input-label">Servicio requerido *</label>
                   <textarea
                     required
                     rows="4"
