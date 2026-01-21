@@ -483,3 +483,60 @@ button, .btn-primary, .btn-secondary {
     margin-right: max(env(safe-area-inset-right), 1rem);
   }
 }
+
+/* En tu archivo global.css o tailwind.css */
+@import 'react-big-calendar/lib/css/react-big-calendar.css';
+
+/* Personalización del calendario */
+.rbc-calendar {
+  font-family: 'Inter', sans-serif;
+}
+
+.rbc-header {
+  background-color: #f9fafb;
+  color: #374151;
+  font-weight: 600;
+  padding: 8px 4px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.rbc-today {
+  background-color: #eff6ff;
+}
+
+.rbc-off-range-bg {
+  background-color: #f3f4f6;
+}
+
+.rbc-event {
+  border-radius: 4px;
+  border: none;
+  padding: 2px 4px;
+}
+
+.rbc-selected {
+  background-color: #3b82f6;
+}
+
+/* Modo oscuro */
+.dark .rbc-header {
+  background-color: #374151;
+  color: #e5e7eb;
+  border-bottom-color: #4b5563;
+}
+
+.dark .rbc-today {
+  background-color: #1e3a8a;
+}
+
+.dark .rbc-off-range-bg {
+  background-color: #374151;
+}
+
+.dark .rbc-month-view {
+  border-color: #4b5563;
+}
+
+.dark .rbc-day-bg {
+  border-color: #4b5563;
+}

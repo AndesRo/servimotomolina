@@ -11,7 +11,11 @@ import {
   ChevronDownIcon,
   ChevronUpIcon,
   ExclamationTriangleIcon,
-  CubeIcon
+  CubeIcon,
+  CurrencyDollarIcon,
+  TrashIcon,
+  PencilIcon,
+  DocumentArrowDownIcon
 } from '@heroicons/react/24/outline'
 
 const Inventario = () => {
@@ -25,14 +29,15 @@ const Inventario = () => {
   const [stockFilter, setStockFilter] = useState('todos')
   const [sortConfig, setSortConfig] = useState({ key: 'nombre', direction: 'asc' })
   const [showFilters, setShowFilters] = useState(false)
-  const [viewMode, setViewMode] = useState('table') // 'table' o 'cards'
+  const [viewMode, setViewMode] = useState('table')
   const [form, setForm] = useState({
     nombre: '',
     categoria: 'Repuesto',
     marca: '',
     modelo: '',
-    stock: 0,
-    stock_minimo: 5
+    precio: '',
+    stock: '',
+    stock_minimo: '5'
   })
 
   useEffect(() => {
@@ -92,6 +97,12 @@ const Inventario = () => {
         return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue
       }
       
+      if (sortConfig.key === 'precio') {
+        const aValue = a.precio || 0
+        const bValue = b.precio || 0
+        return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue
+      }
+      
       const aValue = a[sortConfig.key]?.toString().toLowerCase() || ''
       const bValue = b[sortConfig.key]?.toString().toLowerCase() || ''
       
@@ -114,19 +125,39 @@ const Inventario = () => {
     e.preventDefault()
     
     try {
+      // Formatear precio: eliminar puntos de miles y convertir coma a punto
+      const precioFormateado = form.precio
+        .replace(/\./g, '')  // Eliminar puntos de miles
+        .replace(',', '.')   // Reemplazar coma decimal por punto
+      
+      const precioNumerico = parseFloat(precioFormateado) || 0
+      
+      // Preparar datos con validación
+      const productoData = {
+        nombre: form.nombre.trim(),
+        categoria: form.categoria,
+        marca: form.marca?.trim() || null,
+        modelo: form.modelo?.trim() || null,
+        precio: precioNumerico,
+        stock: parseInt(form.stock) || 0,
+        stock_minimo: parseInt(form.stock_minimo) || 5
+      }
+
       if (editingProduct) {
         // Actualizar producto
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('inventario')
-          .update(form)
+          .update(productoData)
           .eq('id', editingProduct.id)
+          .select()
 
         if (error) throw error
       } else {
         // Crear nuevo producto
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('inventario')
-          .insert([form])
+          .insert([productoData])
+          .select()
 
         if (error) throw error
       }
@@ -135,15 +166,24 @@ const Inventario = () => {
       setEditingProduct(null)
       resetForm()
       fetchProductos()
+      alert(editingProduct ? '✅ Producto actualizado correctamente' : '✅ Producto creado correctamente')
     } catch (error) {
       console.error('Error saving producto:', error)
-      alert('Error al guardar el producto')
+      alert(`❌ Error al guardar el producto: ${error.message}`)
     }
   }
 
   const handleEdit = (producto) => {
     setEditingProduct(producto)
-    setForm(producto)
+    setForm({
+      nombre: producto.nombre || '',
+      categoria: producto.categoria || 'Repuesto',
+      marca: producto.marca || '',
+      modelo: producto.modelo || '',
+      precio: producto.precio ? formatPrecioParaInput(producto.precio) : '',
+      stock: producto.stock ? producto.stock.toString() : '0',
+      stock_minimo: producto.stock_minimo ? producto.stock_minimo.toString() : '5'
+    })
     setShowModal(true)
   }
 
@@ -158,9 +198,10 @@ const Inventario = () => {
 
       if (error) throw error
       fetchProductos()
+      alert('✅ Producto eliminado correctamente')
     } catch (error) {
       console.error('Error deleting producto:', error)
-      alert('Error al eliminar el producto')
+      alert('❌ Error al eliminar el producto')
     }
   }
 
@@ -172,10 +213,12 @@ const Inventario = () => {
         'Categoría': p.categoria,
         'Marca': p.marca || '',
         'Modelo': p.modelo || '',
+        'Precio': p.precio ? formatPrecio(p.precio) : '$0',
         'Stock Actual': p.stock,
         'Stock Mínimo': p.stock_minimo,
         'Estado': p.stock < p.stock_minimo ? 'BAJO STOCK' : 'NORMAL',
-        'Última Actualización': new Date(p.updated_at).toLocaleDateString('es-ES')
+        'Valor Total': p.precio ? formatPrecio(p.precio * p.stock) : '$0',
+        'Última Actualización': new Date(p.updated_at || p.created_at).toLocaleDateString('es-ES')
       }))
 
       // Crear libro de Excel
@@ -184,25 +227,24 @@ const Inventario = () => {
       
       // Ajustar anchos de columnas
       const wscols = [
-        { wch: 30 }, // Nombre
-        { wch: 15 }, // Categoría
-        { wch: 20 }, // Marca
-        { wch: 20 }, // Modelo
-        { wch: 12 }, // Stock Actual
-        { wch: 12 }, // Stock Mínimo
-        { wch: 15 }, // Estado
-        { wch: 20 }  // Última Actualización
+        { wch: 30 },
+        { wch: 15 },
+        { wch: 20 },
+        { wch: 20 },
+        { wch: 12 },
+        { wch: 12 },
+        { wch: 12 },
+        { wch: 15 },
+        { wch: 15 },
+        { wch: 20 }
       ]
       ws['!cols'] = wscols
 
-      // Agregar hoja al libro
       XLSX.utils.book_append_sheet(wb, ws, 'Inventario')
 
-      // Generar nombre de archivo con fecha
       const fecha = new Date().toISOString().split('T')[0].replace(/-/g, '')
       const fileName = `inventario_servi_moto_${fecha}.xlsx`
 
-      // Descargar archivo
       XLSX.writeFile(wb, fileName)
       
       alert(`✅ Archivo "${fileName}" descargado exitosamente`)
@@ -218,8 +260,9 @@ const Inventario = () => {
       categoria: 'Repuesto',
       marca: '',
       modelo: '',
-      stock: 0,
-      stock_minimo: 5
+      precio: '',
+      stock: '',
+      stock_minimo: '5'
     })
   }
 
@@ -230,76 +273,146 @@ const Inventario = () => {
     setSortConfig({ key: 'nombre', direction: 'asc' })
   }
 
+  // Formatear precio para mostrar (20.000 en lugar de 20000.00)
+  const formatPrecio = (precio) => {
+    if (!precio) return '$0'
+    return new Intl.NumberFormat('es-CL', {
+      style: 'currency',
+      currency: 'CLP',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(precio)
+  }
+
+  // Formatear precio para input (20.000)
+  const formatPrecioParaInput = (precio) => {
+    if (!precio) return ''
+    return new Intl.NumberFormat('es-CL', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(precio)
+  }
+
+  // Manejar cambio de precio en el input
+  const handlePrecioChange = (e) => {
+    let value = e.target.value
+    
+    // Solo permitir números, puntos y comas
+    value = value.replace(/[^0-9.,]/g, '')
+    
+    // Reemplazar múltiples puntos o comas por uno solo
+    value = value.replace(/,+/g, ',')
+    value = value.replace(/\.+/g, '.')
+    
+    setForm({
+      ...form,
+      precio: value
+    })
+  }
+
+  // Manejar cambio de stock en el input
+  const handleStockChange = (field, value) => {
+    // Solo permitir números
+    const numericValue = value.replace(/[^0-9]/g, '')
+    setForm({
+      ...form,
+      [field]: numericValue
+    })
+  }
+
+  // Calcular valor total del producto
+  const calcularValorTotal = (producto) => {
+    return (producto.precio || 0) * (producto.stock || 0)
+  }
+
   // Vista de tarjetas para móviles
-  const ProductCard = ({ producto }) => (
-    <div className={`card mb-3 border-l-4 ${
-      producto.stock < producto.stock_minimo 
-        ? 'border-l-red-500 bg-red-50 dark:bg-red-900/20' 
-        : 'border-l-blue-500'
-    }`}>
-      <div className="flex justify-between items-start">
-        <div className="flex-1">
-          <div className="flex items-center gap-2 mb-2">
-            <CubeIcon className="w-5 h-5 text-gray-500" />
-            <h3 className="font-semibold text-gray-900 dark:text-white">
-              {producto.nombre}
-            </h3>
-          </div>
-          
-          <div className="grid grid-cols-2 gap-2 text-sm mb-3">
-            <div>
-              <span className="text-gray-500 dark:text-gray-400">Categoría:</span>
-              <span className={`ml-2 badge ${
-                producto.categoria === 'Repuesto' ? 'badge-primary' : 'badge-success'
-              }`}>
-                {producto.categoria}
-              </span>
+  const ProductCard = ({ producto }) => {
+    const valorTotal = calcularValorTotal(producto)
+    
+    return (
+      <div className={`card mb-3 border-l-4 ${
+        producto.stock < producto.stock_minimo 
+          ? 'border-l-red-500 bg-red-50 dark:bg-red-900/20' 
+          : 'border-l-blue-500'
+      }`}>
+        <div className="flex justify-between items-start">
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-2">
+              <CubeIcon className="w-5 h-5 text-gray-500" />
+              <h3 className="font-semibold text-gray-900 dark:text-white truncate">
+                {producto.nombre}
+              </h3>
             </div>
-            <div>
-              <span className="text-gray-500 dark:text-gray-400">Stock:</span>
-              <span className={`ml-2 font-bold ${
-                producto.stock < producto.stock_minimo 
-                  ? 'text-red-600 dark:text-red-400' 
-                  : 'text-green-600 dark:text-green-400'
-              }`}>
-                {producto.stock}
-              </span>
+            
+            <div className="grid grid-cols-2 gap-2 text-sm mb-3">
+              <div>
+                <span className="text-gray-500 dark:text-gray-400">Categoría:</span>
+                <span className={`ml-2 badge ${
+                  producto.categoria === 'Repuesto' ? 'badge-primary' : 'badge-success'
+                }`}>
+                  {producto.categoria}
+                </span>
+              </div>
+              <div>
+                <span className="text-gray-500 dark:text-gray-400">Stock:</span>
+                <span className={`ml-2 font-bold ${
+                  producto.stock < producto.stock_minimo 
+                    ? 'text-red-600 dark:text-red-400' 
+                    : 'text-green-600 dark:text-green-400'
+                }`}>
+                  {producto.stock}
+                </span>
+              </div>
+              <div>
+                <span className="text-gray-500 dark:text-gray-400">Precio:</span>
+                <span className="ml-2 font-semibold text-blue-600 dark:text-blue-400">
+                  {formatPrecio(producto.precio)}
+                </span>
+              </div>
+              <div>
+                <span className="text-gray-500 dark:text-gray-400">Valor total:</span>
+                <span className="ml-2 font-bold text-green-600 dark:text-green-400">
+                  {formatPrecio(valorTotal)}
+                </span>
+              </div>
+            </div>
+
+            <div className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
+              {producto.marca && <div>Marca: {producto.marca}</div>}
+              {producto.modelo && <div>Modelo: {producto.modelo}</div>}
+              <div>Stock mínimo: {producto.stock_minimo}</div>
             </div>
           </div>
 
-          <div className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
-            {producto.marca && <div>Marca: {producto.marca}</div>}
-            {producto.modelo && <div>Modelo: {producto.modelo}</div>}
-            <div>Stock mínimo: {producto.stock_minimo}</div>
-          </div>
-        </div>
-
-        <div className="flex flex-col items-end gap-2">
-          {producto.stock < producto.stock_minimo && (
-            <div className="flex items-center gap-1 text-xs text-red-600 dark:text-red-400">
-              <ExclamationTriangleIcon className="w-4 h-4" />
-              <span>¡Bajo stock!</span>
+          <div className="flex flex-col items-end gap-2">
+            {producto.stock < producto.stock_minimo && (
+              <div className="flex items-center gap-1 text-xs text-red-600 dark:text-red-400">
+                <ExclamationTriangleIcon className="w-4 h-4" />
+                <span>¡Bajo stock!</span>
+              </div>
+            )}
+            
+            <div className="flex gap-2">
+              <button
+                onClick={() => handleEdit(producto)}
+                className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 text-sm flex items-center gap-1"
+              >
+                <PencilIcon className="w-4 h-4" />
+                <span className="hidden sm:inline">Editar</span>
+              </button>
+              <button
+                onClick={() => handleDelete(producto.id)}
+                className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 text-sm flex items-center gap-1"
+              >
+                <TrashIcon className="w-4 h-4" />
+                <span className="hidden sm:inline">Eliminar</span>
+              </button>
             </div>
-          )}
-          
-          <div className="flex gap-2">
-            <button
-              onClick={() => handleEdit(producto)}
-              className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 text-sm"
-            >
-              Editar
-            </button>
-            <button
-              onClick={() => handleDelete(producto.id)}
-              className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 text-sm"
-            >
-              Eliminar
-            </button>
           </div>
         </div>
       </div>
-    </div>
-  )
+    )
+  }
 
   // Vista de tabla para desktop
   const ProductTable = () => (
@@ -338,6 +451,19 @@ const Inventario = () => {
             </th>
             <th 
               className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer"
+              onClick={() => handleSort('precio')}
+            >
+              <div className="flex items-center gap-1">
+                Precio
+                {sortConfig.key === 'precio' && (
+                  sortConfig.direction === 'asc' ? 
+                    <ChevronUpIcon className="w-4 h-4" /> : 
+                    <ChevronDownIcon className="w-4 h-4" />
+                )}
+              </div>
+            </th>
+            <th 
+              className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer"
               onClick={() => handleSort('stock')}
             >
               <div className="flex items-center gap-1">
@@ -353,84 +479,122 @@ const Inventario = () => {
               Mínimo
             </th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              Valor Total
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
               Acciones
             </th>
           </tr>
         </thead>
         <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
-          {filteredProductos.map((producto) => (
-            <tr 
-              key={producto.id} 
-              className={`hover:bg-gray-50 dark:hover:bg-gray-800 ${
-                producto.stock < producto.stock_minimo 
-                  ? 'bg-red-50 dark:bg-red-900/20' 
-                  : ''
-              }`}
-            >
-              <td className="px-6 py-4 whitespace-nowrap">
-                <div className="font-medium text-gray-900 dark:text-white">
-                  {producto.nombre}
-                </div>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <span className={`badge ${
-                  producto.categoria === 'Repuesto'
-                    ? 'badge-primary'
-                    : 'badge-success'
-                }`}>
-                  {producto.categoria}
-                </span>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <div className="text-sm text-gray-600 dark:text-gray-400">
-                  <div>{producto.marca || '-'}</div>
-                  <div>{producto.modelo || '-'}</div>
-                </div>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <div className="flex items-center">
-                  <span className={`font-medium ${
-                    producto.stock < producto.stock_minimo 
-                      ? 'text-red-600 dark:text-red-400' 
-                      : 'text-gray-900 dark:text-white'
+          {filteredProductos.map((producto) => {
+            const valorTotal = calcularValorTotal(producto)
+            
+            return (
+              <tr 
+                key={producto.id} 
+                className={`hover:bg-gray-50 dark:hover:bg-gray-800 ${
+                  producto.stock < producto.stock_minimo 
+                    ? 'bg-red-50 dark:bg-red-900/20' 
+                    : ''
+                }`}
+              >
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="font-medium text-gray-900 dark:text-white">
+                    {producto.nombre}
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className={`badge ${
+                    producto.categoria === 'Repuesto'
+                      ? 'badge-primary'
+                      : 'badge-success'
                   }`}>
-                    {producto.stock}
+                    {producto.categoria}
                   </span>
-                  {producto.stock < producto.stock_minimo && (
-                    <span className="ml-2 text-xs text-red-600 dark:text-red-400 flex items-center gap-1">
-                      <ExclamationTriangleIcon className="w-3 h-3" />
-                      ¡Bajo stock!
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                    <div>{producto.marca || '-'}</div>
+                    <div>{producto.modelo || '-'}</div>
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="flex items-center">
+                    <CurrencyDollarIcon className="w-4 h-4 text-green-500 mr-1" />
+                    <span className="font-semibold text-green-600 dark:text-green-400">
+                      {formatPrecio(producto.precio)}
                     </span>
-                  )}
-                </div>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <span className="text-gray-600 dark:text-gray-400">
-                  {producto.stock_minimo}
-                </span>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                <div className="flex space-x-2">
-                  <button
-                    onClick={() => handleEdit(producto)}
-                    className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
-                  >
-                    Editar
-                  </button>
-                  <button
-                    onClick={() => handleDelete(producto.id)}
-                    className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
-                  >
-                    Eliminar
-                  </button>
-                </div>
-              </td>
-            </tr>
-          ))}
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="flex items-center">
+                    <span className={`font-medium ${
+                      producto.stock < producto.stock_minimo 
+                        ? 'text-red-600 dark:text-red-400' 
+                        : 'text-gray-900 dark:text-white'
+                    }`}>
+                      {producto.stock}
+                    </span>
+                    {producto.stock < producto.stock_minimo && (
+                      <span className="ml-2 text-xs text-red-600 dark:text-red-400 flex items-center gap-1">
+                        <ExclamationTriangleIcon className="w-3 h-3" />
+                        ¡Bajo stock!
+                      </span>
+                    )}
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className="text-gray-600 dark:text-gray-400">
+                    {producto.stock_minimo}
+                  </span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="flex items-center">
+                    <CurrencyDollarIcon className="w-4 h-4 text-blue-500 mr-1" />
+                    <span className="font-bold text-blue-600 dark:text-blue-400">
+                      {formatPrecio(valorTotal)}
+                    </span>
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => handleEdit(producto)}
+                      className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1"
+                    >
+                      <PencilIcon className="w-4 h-4" />
+                      <span>Editar</span>
+                    </button>
+                    <button
+                      onClick={() => handleDelete(producto.id)}
+                      className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 flex items-center gap-1"
+                    >
+                      <TrashIcon className="w-4 h-4" />
+                      <span>Eliminar</span>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            )
+          })}
         </tbody>
       </table>
     </div>
   )
+
+  // CSS para ocultar flechas de inputs number
+  const style = `
+    .hide-spin-buttons::-webkit-inner-spin-button,
+    .hide-spin-buttons::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    
+    .hide-spin-buttons {
+      -moz-appearance: textfield;
+    }
+  `
 
   if (loading) {
     return (
@@ -444,6 +608,8 @@ const Inventario = () => {
 
   return (
     <div className="page-container">
+      <style>{style}</style>
+      
       {/* Header */}
       <div className="page-header">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -451,6 +617,9 @@ const Inventario = () => {
             <h1 className="page-title">Inventario</h1>
             <p className="page-subtitle">
               {filteredProductos.length} productos encontrados
+              <span className="ml-2 text-green-600 dark:text-green-400">
+                • Valor total: {formatPrecio(filteredProductos.reduce((sum, p) => sum + calcularValorTotal(p), 0))}
+              </span>
             </p>
           </div>
           <div className="flex gap-2">
@@ -479,7 +648,6 @@ const Inventario = () => {
 
       {/* Filtros */}
       <div className="card mb-6">
-        {/* Barra de búsqueda y botón filtros móvil */}
         <div className="flex items-center gap-2 mb-4">
           <div className="relative flex-1">
             <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
@@ -508,7 +676,6 @@ const Inventario = () => {
           </button>
         </div>
 
-        {/* Filtros avanzados - Visible en desktop, colapsable en móvil */}
         <div className={`${showFilters ? 'block' : 'hidden lg:block'}`}>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <div>
@@ -548,6 +715,7 @@ const Inventario = () => {
               >
                 <option value="nombre">Nombre</option>
                 <option value="categoria">Categoría</option>
+                <option value="precio">Precio</option>
                 <option value="stock">Stock</option>
               </select>
             </div>
@@ -563,7 +731,6 @@ const Inventario = () => {
             </div>
           </div>
 
-          {/* Resumen de filtros activos */}
           {(searchTerm || filterCategoria !== 'todos' || stockFilter !== 'todos') && (
             <div className="mt-4 flex flex-wrap gap-2">
               {searchTerm && (
@@ -595,10 +762,12 @@ const Inventario = () => {
         </div>
       </div>
 
-      {/* Contador de resultados */}
       <div className="mb-4 flex justify-between items-center">
         <div className="text-sm text-gray-600 dark:text-gray-400">
           Mostrando {filteredProductos.length} productos
+          <span className="ml-2 text-green-600 dark:text-green-400">
+            • Valor total: {formatPrecio(filteredProductos.reduce((sum, p) => sum + calcularValorTotal(p), 0))}
+          </span>
         </div>
         <div className="lg:hidden flex gap-2">
           <button
@@ -637,20 +806,19 @@ const Inventario = () => {
           </div>
         ) : (
           <>
-            {/* Vista de tarjetas para móviles */}
             <div className={`lg:hidden ${viewMode === 'cards' ? 'block' : 'hidden'}`}>
               {filteredProductos.map((producto) => (
                 <ProductCard key={producto.id} producto={producto} />
               ))}
             </div>
 
-            {/* Vista de tabla para móviles (simple) */}
             <div className={`lg:hidden ${viewMode === 'table' ? 'block' : 'hidden'}`}>
               <div className="overflow-x-auto">
                 <table className="min-w-full">
                   <thead>
                     <tr className="border-b border-gray-200 dark:border-gray-700">
                       <th className="py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Producto</th>
+                      <th className="py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Precio</th>
                       <th className="py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Stock</th>
                       <th className="py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Acciones</th>
                     </tr>
@@ -664,6 +832,11 @@ const Inventario = () => {
                           </div>
                           <div className="text-xs text-gray-500">
                             {producto.categoria}
+                          </div>
+                        </td>
+                        <td className="py-3">
+                          <div className="font-bold text-green-600 dark:text-green-400">
+                            {formatPrecio(producto.precio)}
                           </div>
                         </td>
                         <td className="py-3">
@@ -698,17 +871,18 @@ const Inventario = () => {
               </div>
             </div>
 
-            {/* Vista de tabla para desktop */}
             <ProductTable />
           </>
         )}
 
-        {/* Paginación */}
         {filteredProductos.length > 0 && (
           <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
               <div className="text-sm text-gray-700 dark:text-gray-400 mb-2 sm:mb-0">
                 {filteredProductos.length} de {productos.length} productos
+              </div>
+              <div className="text-sm text-gray-700 dark:text-gray-400 font-bold text-green-600 dark:text-green-400">
+                Valor total inventario: {formatPrecio(productos.reduce((sum, p) => sum + calcularValorTotal(p), 0))}
               </div>
             </div>
           </div>
@@ -782,28 +956,58 @@ const Inventario = () => {
                   </div>
                 </div>
 
+                <div>
+                  <label className="input-label">Precio ($)</label>
+                  <div className="relative">
+                    <CurrencyDollarIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type="text"
+                      value={form.precio}
+                      onChange={handlePrecioChange}
+                      className="input-field pl-10 hide-spin-buttons"
+                      placeholder="20.000 o 20.000,50"
+                      inputMode="decimal"
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Formato chileno: 20.000 (veinte mil) o 20.000,50 (veinte mil con cincuenta)
+                  </p>
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="input-label">Stock actual *</label>
                     <input
-                      type="number"
-                      min="0"
+                      type="text"
                       required
                       value={form.stock}
-                      onChange={(e) => setForm({...form, stock: parseInt(e.target.value) || 0})}
-                      className="input-field"
+                      onChange={(e) => handleStockChange('stock', e.target.value)}
+                      className="input-field hide-spin-buttons"
+                      inputMode="numeric"
                     />
                   </div>
                   <div>
                     <label className="input-label">Stock mínimo *</label>
                     <input
-                      type="number"
-                      min="1"
+                      type="text"
                       required
                       value={form.stock_minimo}
-                      onChange={(e) => setForm({...form, stock_minimo: parseInt(e.target.value) || 5})}
-                      className="input-field"
+                      onChange={(e) => handleStockChange('stock_minimo', e.target.value)}
+                      className="input-field hide-spin-buttons"
+                      inputMode="numeric"
                     />
+                  </div>
+                </div>
+
+                {/* Resumen del producto */}
+                <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
+                  <h4 className="text-sm font-medium text-blue-800 dark:text-blue-300 mb-2">Resumen:</h4>
+                  <div className="text-sm text-blue-600 dark:text-blue-400 space-y-1">
+                    <div>Precio ingresado: {form.precio ? formatPrecio(parseFloat(form.precio.replace(/\./g, '').replace(',', '.')) || 0) : '$0'}</div>
+                    <div>Stock: {form.stock || '0'}</div>
+                    <div>Valor total: {form.precio && form.stock ? 
+                      formatPrecio((parseFloat(form.precio.replace(/\./g, '').replace(',', '.')) || 0) * (parseInt(form.stock) || 0)) : '$0'}</div>
+                    <div>Estado: {(parseInt(form.stock) || 0) < (parseInt(form.stock_minimo) || 5) ? '⚠️ Bajo stock' : '✅ Stock normal'}</div>
                   </div>
                 </div>
 

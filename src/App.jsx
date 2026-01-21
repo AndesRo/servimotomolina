@@ -4,10 +4,12 @@ import { useAppContext } from './context/AppContext'
 import Navbar from './components/Navbar'
 import Sidebar from './components/Sidebar'
 
+// Componentes lazy-loaded
 const Login = lazy(() => import('./pages/Login'))
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const Inventario = lazy(() => import('./pages/Inventario'))
 const Ordenes = lazy(() => import('./pages/Ordenes'))
+const Calendario = lazy(() => import('./pages/Calendario.jsx'))
 
 const PrivateRoute = ({ children }) => {
   const { user, loading } = useAppContext()
@@ -57,7 +59,16 @@ function App() {
               </Layout>
             </PrivateRoute>
           } />
-          
+
+          {/* Nueva ruta para Calendario */}
+          <Route path="/calendario" element={
+            <PrivateRoute>
+              <Layout>
+                <Calendario />
+              </Layout>
+            </PrivateRoute>
+          } />
+        
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </Suspense>
