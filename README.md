@@ -1,146 +1,73 @@
-🏍️ Servi-Stock - Sistema de Gestión de Taller Mecánico para motocicletas
-https://img.shields.io/badge/Servi--Stock-v3.0-blue
-https://img.shields.io/badge/React-18.2.0-61DAFB
-https://img.shields.io/badge/Supabase-2.39.7-3FCF8E
-https://img.shields.io/badge/TailwindCSS-3.3.5-06B6D4
+# Servi Moto - Sistema de Gestión de Taller Mecánico
 
-Servi-Stock es un sistema completo de gestión para talleres mecánicos especializados en motocicletas. Permite controlar inventario, gestionar órdenes de trabajo, generar presupuestos y analizar métricas de negocio en tiempo real.
+Aplicación web para la gestión integral de un taller mecánico de motos, que permite administrar inventario, órdenes de trabajo, calendario de citas y generar documentos en PDF, todo integrado con Supabase como backend. [file:3][file:5][file:10][file:13][file:14][file:16]
 
-✨ Características Principales
-📦 Gestión de Inventario Inteligente
-Control de stock en tiempo real con alertas automáticas
+## Características principales
 
-Categorización de productos (Repuestos, Accesorios, Lubricantes, Baterías)
+- **Autenticación** de usuarios con Supabase (login, sesión persistente y protección de rutas privadas). [file:12][file:14]
+- Panel de **Dashboard** con visualizaciones y métricas usando Chart.js y react-chartjs-2. [file:3][file:11]
+- Módulo de **Inventario** de repuestos con CRUD, control de stock y stock mínimo. [file:13]
+- Gestión de **Órdenes de trabajo**:
+  - Creación/edición de órdenes con datos de cliente, moto, servicio y estado. [file:10]
+  - Asociación de repuestos a la orden con actualización automática de stock. [file:10][file:13]
+  - Cálculo automático de totales (servicio, mano de obra, repuestos) en formato CLP. [file:10]
+  - Exportación de orden a **PDF** con jsPDF + html2canvas. [file:10]
+  - Envío de información de la orden vía **WhatsApp** al cliente. [file:10]
+- **Calendario** de citas y órdenes usando react-big-calendar y moment. [file:3][file:9]
+- Importación masiva de productos desde **Excel/CSV** al inventario usando xlsx. [file:16]
+- Generación de **códigos QR** para productos/órdenes con react-qr-code. [file:3][file:17]
+- **Tema oscuro/claro** global, persistente en localStorage. [file:7][file:14]
+- UI responsive construida con **React**, **Vite**, **Tailwind CSS** y Heroicons. [file:2][file:3][file:5][file:7][file:10][file:13][file:15]
 
-Sistema de stock mínimo con notificaciones automáticas
+## Tecnologías utilizadas
 
-Valoración automática del inventario total
+- **Frontend**
+  - React 18 + Vite. [file:3][file:5][file:6]
+  - React Router DOM para enrutamiento. [file:3][file:5]
+  - Tailwind CSS + PostCSS + Autoprefixer para estilos. [file:2][file:3][file:7]
+  - Heroicons React para iconografía. [file:3][file:10][file:15]
+- **Backend / BaaS**
+  - Supabase (auth, base de datos, almacenamiento de tablas `INVENTARIO`, `ORDENES`, etc.). [file:8][file:10][file:13][file:14][file:16]
+- **Librerías adicionales**
+  - react-big-calendar y moment para calendario. [file:3][file:9]
+  - chart.js + react-chartjs-2 para gráficos. [file:3][file:11]
+  - xlsx para importación de Excel/CSV. [file:3][file:16]
+  - html2canvas y jsPDF para generación de PDFs. [file:3][file:10]
+  - react-qr-code / qrcode para códigos QR. [file:3][file:17]
+  - react-datepicker para selección de fechas (según uso en páginas). [file:3]
 
-Exportación a Excel con formato profesional
+## Estructura del proyecto
 
-🔧 Órdenes de Trabajo Avanzadas
-Creación y seguimiento de órdenes de trabajo
+Principales archivos y carpetas (según los componentes incluidos):
 
-Gestión de estados (Pendiente, En reparación, Finalizada)
+- `index.html`: plantilla principal de la app Vite. [file:1]
+- `main.jsx`: punto de entrada de React. [file:6]
+- `App.jsx`: definición de rutas, layout general y protección de rutas privadas. [file:5]
+- `context/AppContext.jsx`: contexto global para usuario, tema oscuro y Supabase. [file:14]
+- `util/supabase.js`: configuración de cliente de Supabase y constantes de tablas. [file:8]
+- `pages/Login.jsx`: pantalla de login con Supabase Auth. [file:12]
+- `pages/Dashboard.jsx`: panel principal con indicadores y gráficos. [file:11]
+- `pages/Inventario.jsx`: CRUD de inventario, control de stock y QR. [file:13]
+- `pages/Ordenes.jsx`: gestión completa de órdenes de trabajo. [file:10]
+- `pages/Calendario.jsx`: calendario de citas/órdenes. [file:9]
+- `components/Navbar.jsx`: barra de navegación superior con controles y tema. [file:15]
+- `components/ImportExcel.jsx`: importación masiva de productos desde Excel/CSV. [file:16]
+- `components/QRGenerator.jsx`: componente para generación de códigos QR. [file:17]
+- `index.css` / `App.css`: estilos globales y utilidades adicionales. [file:4][file:7]
+- `tailwind.config.js`: configuración de Tailwind (colores, fuentes, paths, etc.). [file:2]
+- `package.json`: scripts de NPM y dependencias del proyecto. [file:3]
 
-Cálculo automático de precios (servicio, mano de obra, repuestos)
+## Requisitos previos
 
-Generación de PDF profesional para presupuestos
+- Node.js y npm instalados.
+- Cuenta y proyecto en Supabase configurado.
+- Variables/URL de Supabase definidas en `supabase.js` (URL, anon key, nombres de tablas). [file:8]
 
-Compartir vía WhatsApp con formato optimizado
+## Instalación
 
-📊 Dashboard Interactivo
-Métricas en tiempo real de inventario y órdenes
+1. Clonar este repositorio:
 
-Gráficos interactivos (líneas, barras, dona)
-
-Productos más vendidos con análisis mensual
-
-Órdenes recientes y estado del negocio
-
-Ingresos mensuales calculados automáticamente
-
-🎨 Interfaz Moderna y Responsiva
-Diseño oscuro/claro con toggle automático
-
-Sidebar colapsable con scroll independiente
-
-Navbar inteligente con fecha/hora en tiempo real
-
-Modal optimizados para móvil y desktop
-
-Tablas responsivas con vistas adaptativas
-
-🔔 Sistema de Notificaciones
-Alertas de stock bajo con prioridades
-
-Órdenes urgentes (pendientes > 2 días)
-
-Contador de notificaciones no leídas
-
-Badges visuales en navegación
-
-Recordatorios automáticos
-
-🛠️ Tecnologías Utilizadas
-Frontend
-React 18 - Biblioteca principal de UI
-
-React Router DOM 6 - Navegación SPA
-
-Chart.js 4 + React Chartjs 2 - Gráficos interactivos
-
-Heroicons React 2 - Iconografía moderna
-
-jsPDF + html2canvas - Generación de PDFs
-
-XLSX - Exportación a Excel
-
-Backend/Base de Datos
-Supabase - Backend as a Service
-
-Autenticación JWT
-
-Base de datos PostgreSQL
-
-API RESTful
-
-Storage
-
-UI/UX
-TailwindCSS 3 - Framework CSS utility-first
-
-React Big Calendar - Calendario interactivo
-
-CSS Animations - Transiciones suaves
-
-Herramientas de Desarrollo
-Vite - Bundler y servidor de desarrollo
-
-ESLint - Linting de código
-
-PostCSS - Procesamiento CSS
-
-Requisitos Previos
-Node.js 16+ y npm/yarn
-
-Cuenta en Supabase
-
-Navegador moderno (Chrome, Firefox, Edge)
-
-git clone https://github.com/tu-usuario/servi-stock.git
-cd servi-stock
-
-npm install
-
-# o
-
-yarn install
-
-📱 Capturas de Pantalla
-Nota: Agregar capturas de pantalla del sistema en funcionamiento
-
-Dashboard Principal
-https://screenshots/dashboard.png
-
-Gestión de Inventario
-https://screenshots/inventario.png
-
-Órdenes de Trabajo
-https://screenshots/ordenes.png
-
-🤝 Contribución
-Las contribuciones son bienvenidas. Sigue estos pasos:
-
-Fork el repositorio
-
-Crea una rama (git checkout -b feature/AmazingFeature)
-
-Commit cambios (git commit -m 'Add: AmazingFeature')
-
-Push a la rama (git push origin feature/AmazingFeature)
-
-Abre un Pull Request
-
-📄 Licencia
-Este proyecto está bajo la Licencia MIT. Ver archivo LICENSE para más detalles.
+   ```bash
+   git clone https://github.com/AndesRo/servi-moto.git
+   cd servi-moto
+   ```
