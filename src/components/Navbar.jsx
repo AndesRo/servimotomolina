@@ -32,7 +32,7 @@ const Navbar = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [showSearch, setShowSearch] = useState(false);
 
-  // si quieres seguir mostrando órdenes activas, puedes usar este state
+  // si quieres mantener órdenes activas, puedes usar este state
   const [stats, setStats] = useState({ ordenesActivas: 0 });
 
   useEffect(() => {
@@ -40,8 +40,7 @@ const Navbar = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // opcional: solo para órdenes activas, sin stock mínimo
-  // usa supabase si ya lo tienes importado en el contexto
+  // Opcional: solo para órdenes activas (sin stock mínimo)
   /*
   useEffect(() => {
     fetchOrdenesActivas();
@@ -51,7 +50,7 @@ const Navbar = () => {
 
   const fetchOrdenesActivas = async () => {
     try {
-      const { supabase } = useAppContext(); // o impórtalo directamente si lo prefieres
+      const { supabase } = useAppContext();
       const { data: ordenes, error } = await supabase
         .from("ordenes")
         .select("id, estado")
@@ -101,11 +100,7 @@ const Navbar = () => {
   const navItems = [
     { path: "/", label: "Dashboard", icon: HomeIcon },
     { path: "/inventario", label: "Inventario", icon: CubeIcon },
-    {
-      path: "/ordenes",
-      label: "Órdenes",
-      icon: ClipboardDocumentListIcon,
-    },
+    { path: "/ordenes", label: "Órdenes", icon: ClipboardDocumentListIcon },
     { path: "/calendario", label: "Calendario", icon: CalendarIcon },
   ];
 
@@ -171,7 +166,7 @@ const Navbar = () => {
               </Link>
             </div>
 
-            {/* Navegación desktop */}
+            {/* Navegación principal - Desktop */}
             <div className="hidden lg:flex items-center space-x-1">
               {navItems.map((item) => (
                 <Link
@@ -189,7 +184,7 @@ const Navbar = () => {
               ))}
             </div>
 
-            {/* Usuario y controles */}
+            {/* Controles de usuario */}
             {user && (
               <div className="flex items-center space-x-2 sm:space-x-3">
                 {/* Buscar móvil */}
@@ -368,8 +363,8 @@ const Navbar = () => {
               </div>
             </div>
 
-            {/* si quieres dejar solo órdenes activas */}
-            {/* 
+            {/* Si quieres mostrar órdenes activas, descomenta este bloque */}
+            {/*
             <div className="flex items-center space-x-4">
               <button
                 onClick={() => navigate("/ordenes")}
@@ -435,11 +430,13 @@ const Navbar = () => {
             <div className="p-4">
               <nav className="space-y-1 mb-6">
                 {navItems.map((item) => (
-                  <Link
+                  <button
                     key={item.path}
-                    to={item.path}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
+                    onClick={() => {
+                      navigate(item.path);
+                      setMobileMenuOpen(false);
+                    }}
+                    className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors ${
                       isActive(item.path)
                         ? "bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-md"
                         : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
@@ -447,7 +444,7 @@ const Navbar = () => {
                   >
                     <item.icon className="w-5 h-5" />
                     <span className="font-medium">{item.label}</span>
-                  </Link>
+                  </button>
                 ))}
               </nav>
 
@@ -506,15 +503,6 @@ const Navbar = () => {
               </div>
             </div>
           </div>
-
-          {/* overlay para cerrar menús */}
-          <div
-            className="fixed inset-0 z-40"
-            onClick={() => {
-              setMobileMenuOpen(false);
-              setUserMenuOpen(false);
-            }}
-          />
         </div>
       )}
     </>
@@ -522,3 +510,4 @@ const Navbar = () => {
 };
 
 export default Navbar;
+
