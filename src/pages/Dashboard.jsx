@@ -52,8 +52,9 @@ const Dashboard = () => {
     totalProductos: 0,
     productosBajoStock: 0,
     ordenesPendientes: 0,
-    ordenesHoy: 0,
+    ordenesEnReparacion: 0,
     ordenesCompletadas: 0,
+    ordenesHoy: 0,
     totalClientes: 0,
     valorInventario: 0,
     ingresosMes: 0
@@ -99,16 +100,25 @@ const Dashboard = () => {
       const hoy = new Date().toISOString().split('T')[0]
       const inicioMes = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0]
       
+      // Consulta corregida: obtener órdenes con repuestos usando la relación correcta
       const { data: todasOrdenes } = await supabase
         .from('ordenes')
-        .select('*, ordenes_repuestos(*, inventario(*))')
+        .select(`
+          *,
+          ordenes_repuestos (
+            cantidad,
+            inventario (id, nombre, precio)
+          )
+        `)
 
-      const ordenesPendientes = todasOrdenes?.filter(o => ['Pendiente', 'En reparación'].includes(o.estado)).length || 0
-      const ordenesHoy = todasOrdenes?.filter(o => o.created_at.startsWith(hoy)).length || 0
+      // Separar estados correctamente según el sistema
+      const ordenesPendientes = todasOrdenes?.filter(o => o.estado === 'Pendiente').length || 0
+      const ordenesEnReparacion = todasOrdenes?.filter(o => o.estado === 'En reparación').length || 0
       const ordenesCompletadas = todasOrdenes?.filter(o => o.estado === 'Finalizada').length || 0
+      const ordenesHoy = todasOrdenes?.filter(o => o.created_at.startsWith(hoy)).length || 0
       
-      // Obtener órdenes del mes para calcular ingresos
-      const ordenesMes = todasOrdenes?.filter(o => o.created_at >= inicioMes) || []
+      // Calcular ingresos del mes (solo órdenes finalizadas)
+      const ordenesMes = todasOrdenes?.filter(o => o.created_at >= inicioMes && o.estado === 'Finalizada') || []
       const ingresosMes = ordenesMes.reduce((sum, orden) => {
         const totalRepuestos = orden.ordenes_repuestos?.reduce((s, rep) => 
           s + ((rep.inventario?.precio || 0) * (rep.cantidad || 0)), 0) || 0
@@ -144,21 +154,24 @@ const Dashboard = () => {
         }
       })
 
-      // Calcular productos más vendidos
+      // Calcular productos más vendidos usando la relación correcta
       const productosVendidos = {}
       todasOrdenes?.forEach(orden => {
         orden.ordenes_repuestos?.forEach(rep => {
-          const productoId = rep.inventario?.id || rep.producto_id
-          const productoNombre = rep.inventario?.nombre || 'Producto desconocido'
+          const productoId = rep.inventario?.id
+          const productoNombre = rep.inventario?.nombre || 'Producto eliminado'
           const cantidad = rep.cantidad || 0
           
-          if (!productosVendidos[productoId]) {
-            productosVendidos[productoId] = {
-              nombre: productoNombre,
-              cantidad: 0
+          if (productoId) {
+            if (!productosVendidos[productoId]) {
+              productosVendidos[productoId] = {
+                id: productoId,
+                nombre: productoNombre,
+                cantidad: 0
+              }
             }
+            productosVendidos[productoId].cantidad += cantidad
           }
-          productosVendidos[productoId].cantidad += cantidad
         })
       })
 
@@ -173,8 +186,9 @@ const Dashboard = () => {
         totalProductos: totalProductos || 0,
         productosBajoStock,
         ordenesPendientes,
-        ordenesHoy,
+        ordenesEnReparacion,
         ordenesCompletadas,
+        ordenesHoy,
         totalClientes: clientesUnicos,
         valorInventario,
         ingresosMes
@@ -280,14 +294,14 @@ const Dashboard = () => {
     }
   }
 
-  // Configuración del gráfico de dona (Estado de órdenes)
+  // Configuración del gráfico de dona (Estado de órdenes) - CORREGIDO
   const doughnutChartData = {
     labels: ['Pendientes', 'En reparación', 'Completadas'],
     datasets: [
       {
         data: [
           stats.ordenesPendientes,
-          stats.ordenesHoy,
+          stats.ordenesEnReparacion,
           stats.ordenesCompletadas
         ],
         backgroundColor: [
@@ -323,7 +337,10 @@ const Dashboard = () => {
 
   // Configuración del gráfico de barras (Productos más vendidos)
   const barChartData = {
-    labels: productosMasVendidos.map(p => p.nombre.length > 15 ? p.nombre.substring(0, 12) + '...' : p.nombre),
+    labels: productosMasVendidos.map(p => {
+      if (!p.nombre) return 'Sin nombre'
+      return p.nombre.length > 15 ? p.nombre.substring(0, 12) + '...' : p.nombre
+    }),
     datasets: [
       {
         label: 'Cantidad vendida',
@@ -427,7 +444,7 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Grid de estadísticas principales */}
+      {/* Grid de estadísticas principales - CORREGIDO */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <StatCard
           title="Total Inventario"
@@ -451,7 +468,7 @@ const Dashboard = () => {
         
         <StatCard
           title="Órdenes activas"
-          value={stats.ordenesPendientes}
+          value={stats.ordenesPendientes + stats.ordenesEnReparacion}
           icon={WrenchScrewdriverIcon}
           color="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400"
           subtitle={`${stats.ordenesHoy} hoy`}
@@ -493,7 +510,7 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Gráfico de estado de órdenes */}
+        {/* Gráfico de estado de órdenes - CORREGIDO */}
         <div className="card">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
             <div>
@@ -505,7 +522,7 @@ const Dashboard = () => {
               </p>
             </div>
             <div className="text-lg font-bold text-gray-900 dark:text-white">
-              {stats.ordenesPendientes + stats.ordenesCompletadas + stats.ordenesHoy}
+              {stats.ordenesPendientes + stats.ordenesCompletadas + stats.ordenesEnReparacion}
             </div>
           </div>
           <div className="h-64">
@@ -584,7 +601,7 @@ const Dashboard = () => {
               <FireIcon className="w-5 h-5" />
               <div className="flex-1">
                 <div className="font-medium">Órdenes urgentes</div>
-                <div className="text-xs opacity-90">{stats.ordenesPendientes} pendientes</div>
+                <div className="text-xs opacity-90">{stats.ordenesPendientes + stats.ordenesEnReparacion} pendientes</div>
               </div>
             </button>
           </div>
@@ -690,6 +707,7 @@ const Dashboard = () => {
             </div>
           </div>
         </div>
+        
 
         {/* Productos recientes y clientes */}
         <div className="space-y-6">

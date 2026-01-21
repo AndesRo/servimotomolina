@@ -15,7 +15,8 @@ import {
   CurrencyDollarIcon,
   TrashIcon,
   PencilIcon,
-  DocumentArrowDownIcon
+  DocumentArrowDownIcon,
+  ArrowPathIcon
 } from '@heroicons/react/24/outline'
 
 const Inventario = () => {
@@ -50,6 +51,7 @@ const Inventario = () => {
 
   const fetchProductos = async () => {
     try {
+      setLoading(true)
       const { data, error } = await supabase
         .from('inventario')
         .select('*')
@@ -57,8 +59,10 @@ const Inventario = () => {
 
       if (error) throw error
       setProductos(data || [])
+      setFilteredProductos(data || [])
     } catch (error) {
       console.error('Error fetching productos:', error)
+      alert('❌ Error al cargar los productos')
     } finally {
       setLoading(false)
     }
@@ -92,14 +96,20 @@ const Inventario = () => {
     // Ordenar
     filtered.sort((a, b) => {
       if (sortConfig.key === 'stock') {
-        const aValue = a.stock - a.stock_minimo
-        const bValue = b.stock - b.stock_minimo
+        const aValue = a.stock
+        const bValue = b.stock
         return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue
       }
       
       if (sortConfig.key === 'precio') {
         const aValue = a.precio || 0
         const bValue = b.precio || 0
+        return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue
+      }
+      
+      if (sortConfig.key === 'stock_minimo') {
+        const aValue = a.stock_minimo
+        const bValue = b.stock_minimo
         return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue
       }
       
@@ -125,48 +135,72 @@ const Inventario = () => {
     e.preventDefault()
     
     try {
+      // Validar campos requeridos
+      if (!form.nombre.trim()) {
+        alert('❌ El nombre del producto es requerido')
+        return
+      }
+
       // Formatear precio: eliminar puntos de miles y convertir coma a punto
       const precioFormateado = form.precio
-        .replace(/\./g, '')  // Eliminar puntos de miles
-        .replace(',', '.')   // Reemplazar coma decimal por punto
+        ? form.precio.replace(/\./g, '').replace(',', '.')
+        : '0'
       
       const precioNumerico = parseFloat(precioFormateado) || 0
+      const stock = parseInt(form.stock) || 0
+      const stockMinimo = parseInt(form.stock_minimo) || 5
       
-      // Preparar datos con validación
+      // Validar valores numéricos
+      if (precioNumerico < 0) {
+        alert('❌ El precio no puede ser negativo')
+        return
+      }
+      
+      if (stock < 0) {
+        alert('❌ El stock no puede ser negativo')
+        return
+      }
+      
+      if (stockMinimo < 0) {
+        alert('❌ El stock mínimo no puede ser negativo')
+        return
+      }
+      
+      // Preparar datos
       const productoData = {
         nombre: form.nombre.trim(),
         categoria: form.categoria,
         marca: form.marca?.trim() || null,
         modelo: form.modelo?.trim() || null,
         precio: precioNumerico,
-        stock: parseInt(form.stock) || 0,
-        stock_minimo: parseInt(form.stock_minimo) || 5
+        stock: stock,
+        stock_minimo: stockMinimo,
+        updated_at: new Date().toISOString()
       }
 
       if (editingProduct) {
         // Actualizar producto
-        const { data, error } = await supabase
+        const { error } = await supabase
           .from('inventario')
           .update(productoData)
           .eq('id', editingProduct.id)
-          .select()
 
         if (error) throw error
+        alert('✅ Producto actualizado correctamente')
       } else {
         // Crear nuevo producto
-        const { data, error } = await supabase
+        const { error } = await supabase
           .from('inventario')
           .insert([productoData])
-          .select()
 
         if (error) throw error
+        alert('✅ Producto creado correctamente')
       }
 
       setShowModal(false)
       setEditingProduct(null)
       resetForm()
       fetchProductos()
-      alert(editingProduct ? '✅ Producto actualizado correctamente' : '✅ Producto creado correctamente')
     } catch (error) {
       console.error('Error saving producto:', error)
       alert(`❌ Error al guardar el producto: ${error.message}`)
@@ -191,12 +225,27 @@ const Inventario = () => {
     if (!confirm('¿Estás seguro de eliminar este producto?')) return
 
     try {
+      // Verificar si el producto está en uso en alguna orden
+      const { data: ordenesConProducto, error: ordenesError } = await supabase
+        .from('ordenes_repuestos')
+        .select('id')
+        .eq('producto_id', id)
+        .limit(1)
+
+      if (ordenesError) throw ordenesError
+
+      if (ordenesConProducto && ordenesConProducto.length > 0) {
+        alert('❌ No se puede eliminar el producto porque está asociado a una o más órdenes')
+        return
+      }
+
       const { error } = await supabase
         .from('inventario')
         .delete()
         .eq('id', id)
 
       if (error) throw error
+      
       fetchProductos()
       alert('✅ Producto eliminado correctamente')
     } catch (error) {
@@ -209,16 +258,17 @@ const Inventario = () => {
     try {
       // Preparar datos para exportar
       const dataToExport = filteredProductos.map(p => ({
+        'ID': p.id,
         'Nombre': p.nombre,
         'Categoría': p.categoria,
-        'Marca': p.marca || '',
-        'Modelo': p.modelo || '',
-        'Precio': p.precio ? formatPrecio(p.precio) : '$0',
+        'Marca': p.marca || 'N/A',
+        'Modelo': p.modelo || 'N/A',
+        'Precio Unitario ($)': p.precio || 0,
         'Stock Actual': p.stock,
         'Stock Mínimo': p.stock_minimo,
         'Estado': p.stock < p.stock_minimo ? 'BAJO STOCK' : 'NORMAL',
-        'Valor Total': p.precio ? formatPrecio(p.precio * p.stock) : '$0',
-        'Última Actualización': new Date(p.updated_at || p.created_at).toLocaleDateString('es-ES')
+        'Valor Total ($)': (p.precio || 0) * (p.stock || 0),
+        'Última Actualización': new Date(p.updated_at || p.created_at).toLocaleDateString('es-CL')
       }))
 
       // Crear libro de Excel
@@ -227,16 +277,17 @@ const Inventario = () => {
       
       // Ajustar anchos de columnas
       const wscols = [
-        { wch: 30 },
-        { wch: 15 },
-        { wch: 20 },
-        { wch: 20 },
-        { wch: 12 },
-        { wch: 12 },
-        { wch: 12 },
-        { wch: 15 },
-        { wch: 15 },
-        { wch: 20 }
+        { wch: 36 }, // ID
+        { wch: 30 }, // Nombre
+        { wch: 15 }, // Categoría
+        { wch: 20 }, // Marca
+        { wch: 20 }, // Modelo
+        { wch: 15 }, // Precio
+        { wch: 12 }, // Stock
+        { wch: 12 }, // Stock Mínimo
+        { wch: 15 }, // Estado
+        { wch: 15 }, // Valor Total
+        { wch: 20 }  // Última Actualización
       ]
       ws['!cols'] = wscols
 
@@ -264,6 +315,7 @@ const Inventario = () => {
       stock: '',
       stock_minimo: '5'
     })
+    setEditingProduct(null)
   }
 
   const clearFilters = () => {
@@ -273,9 +325,9 @@ const Inventario = () => {
     setSortConfig({ key: 'nombre', direction: 'asc' })
   }
 
-  // Formatear precio para mostrar (20.000 en lugar de 20000.00)
+  // Formatear precio para mostrar
   const formatPrecio = (precio) => {
-    if (!precio) return '$0'
+    if (!precio && precio !== 0) return '$0'
     return new Intl.NumberFormat('es-CL', {
       style: 'currency',
       currency: 'CLP',
@@ -325,6 +377,11 @@ const Inventario = () => {
     return (producto.precio || 0) * (producto.stock || 0)
   }
 
+  // Calcular valor total del inventario
+  const calcularValorTotalInventario = () => {
+    return productos.reduce((sum, p) => sum + calcularValorTotal(p), 0)
+  }
+
   // Vista de tarjetas para móviles
   const ProductCard = ({ producto }) => {
     const valorTotal = calcularValorTotal(producto)
@@ -348,7 +405,10 @@ const Inventario = () => {
               <div>
                 <span className="text-gray-500 dark:text-gray-400">Categoría:</span>
                 <span className={`ml-2 badge ${
-                  producto.categoria === 'Repuesto' ? 'badge-primary' : 'badge-success'
+                  producto.categoria === 'Repuesto' ? 'badge-primary' :
+                  producto.categoria === 'Accesorio' ? 'badge-success' :
+                  producto.categoria === 'Lubricante' ? 'badge-warning' :
+                  'badge-danger'
                 }`}>
                   {producto.categoria}
                 </span>
@@ -396,6 +456,7 @@ const Inventario = () => {
               <button
                 onClick={() => handleEdit(producto)}
                 className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 text-sm flex items-center gap-1"
+                title="Editar producto"
               >
                 <PencilIcon className="w-4 h-4" />
                 <span className="hidden sm:inline">Editar</span>
@@ -403,6 +464,7 @@ const Inventario = () => {
               <button
                 onClick={() => handleDelete(producto.id)}
                 className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 text-sm flex items-center gap-1"
+                title="Eliminar producto"
               >
                 <TrashIcon className="w-4 h-4" />
                 <span className="hidden sm:inline">Eliminar</span>
@@ -421,7 +483,7 @@ const Inventario = () => {
         <thead className="bg-gray-50 dark:bg-gray-800">
           <tr>
             <th 
-              className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer"
+              className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
               onClick={() => handleSort('nombre')}
             >
               <div className="flex items-center gap-1">
@@ -434,7 +496,7 @@ const Inventario = () => {
               </div>
             </th>
             <th 
-              className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer"
+              className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
               onClick={() => handleSort('categoria')}
             >
               <div className="flex items-center gap-1">
@@ -450,7 +512,7 @@ const Inventario = () => {
               Marca/Modelo
             </th>
             <th 
-              className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer"
+              className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
               onClick={() => handleSort('precio')}
             >
               <div className="flex items-center gap-1">
@@ -463,7 +525,7 @@ const Inventario = () => {
               </div>
             </th>
             <th 
-              className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer"
+              className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
               onClick={() => handleSort('stock')}
             >
               <div className="flex items-center gap-1">
@@ -475,8 +537,18 @@ const Inventario = () => {
                 )}
               </div>
             </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-              Mínimo
+            <th 
+              className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
+              onClick={() => handleSort('stock_minimo')}
+            >
+              <div className="flex items-center gap-1">
+                Mínimo
+                {sortConfig.key === 'stock_minimo' && (
+                  sortConfig.direction === 'asc' ? 
+                    <ChevronUpIcon className="w-4 h-4" /> : 
+                    <ChevronDownIcon className="w-4 h-4" />
+                )}
+              </div>
             </th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
               Valor Total
@@ -506,9 +578,10 @@ const Inventario = () => {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className={`badge ${
-                    producto.categoria === 'Repuesto'
-                      ? 'badge-primary'
-                      : 'badge-success'
+                    producto.categoria === 'Repuesto' ? 'badge-primary' :
+                    producto.categoria === 'Accesorio' ? 'badge-success' :
+                    producto.categoria === 'Lubricante' ? 'badge-warning' :
+                    'badge-danger'
                   }`}>
                     {producto.categoria}
                   </span>
@@ -562,6 +635,7 @@ const Inventario = () => {
                     <button
                       onClick={() => handleEdit(producto)}
                       className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1"
+                      title="Editar"
                     >
                       <PencilIcon className="w-4 h-4" />
                       <span>Editar</span>
@@ -569,6 +643,7 @@ const Inventario = () => {
                     <button
                       onClick={() => handleDelete(producto.id)}
                       className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 flex items-center gap-1"
+                      title="Eliminar"
                     >
                       <TrashIcon className="w-4 h-4" />
                       <span>Eliminar</span>
@@ -599,8 +674,9 @@ const Inventario = () => {
   if (loading) {
     return (
       <div className="page-container">
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="flex flex-col items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">Cargando inventario...</p>
         </div>
       </div>
     )
@@ -618,28 +694,37 @@ const Inventario = () => {
             <p className="page-subtitle">
               {filteredProductos.length} productos encontrados
               <span className="ml-2 text-green-600 dark:text-green-400">
-                • Valor total: {formatPrecio(filteredProductos.reduce((sum, p) => sum + calcularValorTotal(p), 0))}
+                • Valor total: {formatPrecio(calcularValorTotalInventario())}
               </span>
             </p>
           </div>
           <div className="flex gap-2">
             <button
+              onClick={() => fetchProductos()}
+              className="btn-secondary flex items-center gap-2"
+              title="Actualizar inventario"
+            >
+              <ArrowPathIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="hidden sm:inline">Actualizar</span>
+            </button>
+            <button
               onClick={exportToExcel}
               className="btn-secondary flex items-center gap-2"
+              title="Exportar a Excel"
             >
               <ArrowDownTrayIcon className="w-4 h-4 sm:w-5 sm:h-5" />
               <span className="hidden sm:inline">Exportar</span>
             </button>
             <button
               onClick={() => {
-                setEditingProduct(null)
                 resetForm()
                 setShowModal(true)
               }}
               className="btn-primary flex items-center gap-2"
+              title="Agregar nuevo producto"
             >
               <PlusIcon className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span className="hidden sm:inline">Nuevo</span>
+              <span className="hidden sm:inline">Nuevo Producto</span>
               <span className="sm:hidden">Nuevo</span>
             </button>
           </div>
@@ -662,6 +747,7 @@ const Inventario = () => {
               <button
                 onClick={() => setSearchTerm('')}
                 className="absolute right-3 top-1/2 transform -translate-y-1/2"
+                title="Limpiar búsqueda"
               >
                 <XMarkIcon className="w-4 h-4 text-gray-400 hover:text-gray-600" />
               </button>
@@ -671,6 +757,7 @@ const Inventario = () => {
           <button
             onClick={() => setShowFilters(!showFilters)}
             className="lg:hidden btn-secondary p-2"
+            title="Mostrar/Ocultar filtros"
           >
             <AdjustmentsHorizontalIcon className="w-5 h-5" />
           </button>
@@ -685,29 +772,30 @@ const Inventario = () => {
                 onChange={(e) => setFilterCategoria(e.target.value)}
                 className="input-field"
               >
-                <option value="todos">Todas</option>
+                <option value="todos">Todas las categorías</option>
                 <option value="Repuesto">Repuesto</option>
                 <option value="Accesorio">Accesorio</option>
                 <option value="Lubricante">Lubricante</option>
-                <option value="Bateria">Bateria</option>
+                <option value="Bateria">Batería</option>
+                <option value="Herramienta">Herramienta</option>
               </select>
             </div>
 
             <div>
-              <label className="input-label">Estado</label>
+              <label className="input-label">Estado de Stock</label>
               <select
                 value={stockFilter}
                 onChange={(e) => setStockFilter(e.target.value)}
                 className="input-field"
               >
                 <option value="todos">Todos</option>
-                <option value="bajo">Stock bajo</option>
+                <option value="bajo">Bajo stock</option>
                 <option value="normal">Stock normal</option>
               </select>
             </div>
 
             <div>
-              <label className="input-label">Ordenar</label>
+              <label className="input-label">Ordenar por</label>
               <select
                 value={sortConfig.key}
                 onChange={(e) => handleSort(e.target.value)}
@@ -717,6 +805,7 @@ const Inventario = () => {
                 <option value="categoria">Categoría</option>
                 <option value="precio">Precio</option>
                 <option value="stock">Stock</option>
+                <option value="stock_minimo">Stock mínimo</option>
               </select>
             </div>
 
@@ -724,35 +813,46 @@ const Inventario = () => {
               <button
                 onClick={clearFilters}
                 className="btn-secondary flex-1 flex items-center justify-center gap-2"
+                title="Limpiar todos los filtros"
               >
                 <FunnelIcon className="w-4 h-4" />
-                Limpiar
+                Limpiar Filtros
               </button>
             </div>
           </div>
 
+          {/* Resumen de filtros activos */}
           {(searchTerm || filterCategoria !== 'todos' || stockFilter !== 'todos') && (
             <div className="mt-4 flex flex-wrap gap-2">
               {searchTerm && (
-                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-blue-100 text-blue-800 text-xs">
+                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-blue-100 text-blue-800 text-xs dark:bg-blue-900/30 dark:text-blue-300">
                   Búsqueda: "{searchTerm}"
-                  <button onClick={() => setSearchTerm('')}>
+                  <button 
+                    onClick={() => setSearchTerm('')}
+                    className="hover:text-blue-900 dark:hover:text-blue-100"
+                  >
                     <XMarkIcon className="w-3 h-3" />
                   </button>
                 </span>
               )}
               {filterCategoria !== 'todos' && (
-                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-purple-100 text-purple-800 text-xs">
+                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-purple-100 text-purple-800 text-xs dark:bg-purple-900/30 dark:text-purple-300">
                   Categoría: {filterCategoria}
-                  <button onClick={() => setFilterCategoria('todos')}>
+                  <button 
+                    onClick={() => setFilterCategoria('todos')}
+                    className="hover:text-purple-900 dark:hover:text-purple-100"
+                  >
                     <XMarkIcon className="w-3 h-3" />
                   </button>
                 </span>
               )}
               {stockFilter !== 'todos' && (
-                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-yellow-100 text-yellow-800 text-xs">
+                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-yellow-100 text-yellow-800 text-xs dark:bg-yellow-900/30 dark:text-yellow-300">
                   Stock: {stockFilter === 'bajo' ? 'Bajo' : 'Normal'}
-                  <button onClick={() => setStockFilter('todos')}>
+                  <button 
+                    onClick={() => setStockFilter('todos')}
+                    className="hover:text-yellow-900 dark:hover:text-yellow-100"
+                  >
                     <XMarkIcon className="w-3 h-3" />
                   </button>
                 </span>
@@ -762,9 +862,10 @@ const Inventario = () => {
         </div>
       </div>
 
+      {/* Controles de vista */}
       <div className="mb-4 flex justify-between items-center">
         <div className="text-sm text-gray-600 dark:text-gray-400">
-          Mostrando {filteredProductos.length} productos
+          Mostrando {filteredProductos.length} de {productos.length} productos
           <span className="ml-2 text-green-600 dark:text-green-400">
             • Valor total: {formatPrecio(filteredProductos.reduce((sum, p) => sum + calcularValorTotal(p), 0))}
           </span>
@@ -773,12 +874,14 @@ const Inventario = () => {
           <button
             onClick={() => setViewMode('cards')}
             className={`px-3 py-1 rounded-lg text-sm ${viewMode === 'cards' ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}`}
+            title="Vista de tarjetas"
           >
             Tarjetas
           </button>
           <button
             onClick={() => setViewMode('table')}
             className={`px-3 py-1 rounded-lg text-sm ${viewMode === 'table' ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}`}
+            title="Vista de tabla"
           >
             Tabla
           </button>
@@ -793,12 +896,18 @@ const Inventario = () => {
             <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
               No se encontraron productos
             </h3>
-            <p className="text-gray-600 dark:text-gray-400">
-              Intenta ajustar los filtros o agrega un nuevo producto
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
+              {searchTerm || filterCategoria !== 'todos' || stockFilter !== 'todos'
+                ? 'Intenta ajustar los filtros de búsqueda'
+                : 'El inventario está vacío. Agrega tu primer producto.'
+              }
             </p>
             <button
-              onClick={() => setShowModal(true)}
-              className="mt-4 btn-primary"
+              onClick={() => {
+                resetForm()
+                setShowModal(true)
+              }}
+              className="btn-primary px-4 py-2"
             >
               <PlusIcon className="w-4 h-4 inline mr-2" />
               Agregar primer producto
@@ -806,12 +915,14 @@ const Inventario = () => {
           </div>
         ) : (
           <>
+            {/* Vista de tarjetas para móviles */}
             <div className={`lg:hidden ${viewMode === 'cards' ? 'block' : 'hidden'}`}>
               {filteredProductos.map((producto) => (
                 <ProductCard key={producto.id} producto={producto} />
               ))}
             </div>
 
+            {/* Vista de tabla simple para móviles */}
             <div className={`lg:hidden ${viewMode === 'table' ? 'block' : 'hidden'}`}>
               <div className="overflow-x-auto">
                 <table className="min-w-full">
@@ -840,11 +951,7 @@ const Inventario = () => {
                           </div>
                         </td>
                         <td className="py-3">
-                          <div className={`font-bold ${
-                            producto.stock < producto.stock_minimo 
-                              ? 'text-red-600 dark:text-red-400' 
-                              : 'text-gray-900 dark:text-white'
-                          }`}>
+                          <div className={`font-bold ${producto.stock < producto.stock_minimo ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'}`}>
                             {producto.stock}
                           </div>
                         </td>
@@ -853,12 +960,14 @@ const Inventario = () => {
                             <button
                               onClick={() => handleEdit(producto)}
                               className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 text-sm"
+                              title="Editar"
                             >
                               Editar
                             </button>
                             <button
                               onClick={() => handleDelete(producto.id)}
                               className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 text-sm"
+                              title="Eliminar"
                             >
                               Eliminar
                             </button>
@@ -871,18 +980,23 @@ const Inventario = () => {
               </div>
             </div>
 
+            {/* Vista de tabla completa para desktop */}
             <ProductTable />
           </>
         )}
 
+        {/* Resumen del pie */}
         {filteredProductos.length > 0 && (
-          <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700">
+          <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
               <div className="text-sm text-gray-700 dark:text-gray-400 mb-2 sm:mb-0">
-                {filteredProductos.length} de {productos.length} productos
+                <span className="font-medium">{filteredProductos.length}</span> productos mostrados
               </div>
-              <div className="text-sm text-gray-700 dark:text-gray-400 font-bold text-green-600 dark:text-green-400">
-                Valor total inventario: {formatPrecio(productos.reduce((sum, p) => sum + calcularValorTotal(p), 0))}
+              <div className="text-sm">
+                <span className="text-gray-700 dark:text-gray-400">Valor total inventario: </span>
+                <span className="font-bold text-green-600 dark:text-green-400">
+                  {formatPrecio(productos.reduce((sum, p) => sum + calcularValorTotal(p), 0))}
+                </span>
               </div>
             </div>
           </div>
@@ -899,8 +1013,12 @@ const Inventario = () => {
                   {editingProduct ? 'Editar Producto' : 'Nuevo Producto'}
                 </h3>
                 <button
-                  onClick={() => setShowModal(false)}
+                  onClick={() => {
+                    setShowModal(false)
+                    resetForm()
+                  }}
                   className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  title="Cerrar"
                 >
                   <XMarkIcon className="w-6 h-6" />
                 </button>
@@ -908,14 +1026,15 @@ const Inventario = () => {
               
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label className="input-label">Nombre *</label>
+                  <label className="input-label">Nombre del producto *</label>
                   <input
                     type="text"
                     required
                     value={form.nombre}
                     onChange={(e) => setForm({...form, nombre: e.target.value})}
                     className="input-field"
-                    placeholder="Filtro de aceite, cadena, etc."
+                    placeholder="Ej: Filtro de aceite, cadena, etc."
+                    autoFocus
                   />
                 </div>
 
@@ -925,11 +1044,13 @@ const Inventario = () => {
                     value={form.categoria}
                     onChange={(e) => setForm({...form, categoria: e.target.value})}
                     className="input-field"
+                    required
                   >
                     <option value="Repuesto">Repuesto</option>
                     <option value="Accesorio">Accesorio</option>
                     <option value="Lubricante">Lubricante</option>
-                    <option value="Bateria">Bateria</option>
+                    <option value="Bateria">Batería</option>
+                    <option value="Herramienta">Herramienta</option>
                   </select>
                 </div>
 
@@ -957,7 +1078,7 @@ const Inventario = () => {
                 </div>
 
                 <div>
-                  <label className="input-label">Precio ($)</label>
+                  <label className="input-label">Precio unitario ($)</label>
                   <div className="relative">
                     <CurrencyDollarIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                     <input
@@ -967,6 +1088,7 @@ const Inventario = () => {
                       className="input-field pl-10 hide-spin-buttons"
                       placeholder="20.000 o 20.000,50"
                       inputMode="decimal"
+                      required
                     />
                   </div>
                   <p className="text-xs text-gray-500 mt-1">
@@ -983,6 +1105,7 @@ const Inventario = () => {
                       value={form.stock}
                       onChange={(e) => handleStockChange('stock', e.target.value)}
                       className="input-field hide-spin-buttons"
+                      placeholder="10"
                       inputMode="numeric"
                     />
                   </div>
@@ -994,6 +1117,7 @@ const Inventario = () => {
                       value={form.stock_minimo}
                       onChange={(e) => handleStockChange('stock_minimo', e.target.value)}
                       className="input-field hide-spin-buttons"
+                      placeholder="5"
                       inputMode="numeric"
                     />
                   </div>
@@ -1001,20 +1125,25 @@ const Inventario = () => {
 
                 {/* Resumen del producto */}
                 <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
-                  <h4 className="text-sm font-medium text-blue-800 dark:text-blue-300 mb-2">Resumen:</h4>
+                  <h4 className="text-sm font-medium text-blue-800 dark:text-blue-300 mb-2">Resumen del producto:</h4>
                   <div className="text-sm text-blue-600 dark:text-blue-400 space-y-1">
-                    <div>Precio ingresado: {form.precio ? formatPrecio(parseFloat(form.precio.replace(/\./g, '').replace(',', '.')) || 0) : '$0'}</div>
-                    <div>Stock: {form.stock || '0'}</div>
+                    <div>Precio unitario: {form.precio ? formatPrecio(parseFloat(form.precio.replace(/\./g, '').replace(',', '.')) || 0) : '$0'}</div>
+                    <div>Stock: {form.stock || '0'} unidades</div>
                     <div>Valor total: {form.precio && form.stock ? 
                       formatPrecio((parseFloat(form.precio.replace(/\./g, '').replace(',', '.')) || 0) * (parseInt(form.stock) || 0)) : '$0'}</div>
-                    <div>Estado: {(parseInt(form.stock) || 0) < (parseInt(form.stock_minimo) || 5) ? '⚠️ Bajo stock' : '✅ Stock normal'}</div>
+                    <div className={`font-medium ${(parseInt(form.stock) || 0) < (parseInt(form.stock_minimo) || 5) ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
+                      Estado: {(parseInt(form.stock) || 0) < (parseInt(form.stock_minimo) || 5) ? '⚠️ Bajo stock' : '✅ Stock normal'}
+                    </div>
                   </div>
                 </div>
 
                 <div className="flex justify-end space-x-3 pt-4">
                   <button
                     type="button"
-                    onClick={() => setShowModal(false)}
+                    onClick={() => {
+                      setShowModal(false)
+                      resetForm()
+                    }}
                     className="btn-secondary px-4"
                   >
                     Cancelar
@@ -1023,7 +1152,7 @@ const Inventario = () => {
                     type="submit"
                     className="btn-primary px-4"
                   >
-                    {editingProduct ? 'Actualizar' : 'Crear'}
+                    {editingProduct ? 'Actualizar Producto' : 'Crear Producto'}
                   </button>
                 </div>
               </form>

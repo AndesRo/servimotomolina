@@ -15,7 +15,14 @@ import {
   MagnifyingGlassIcon,
   QuestionMarkCircleIcon,
   ArrowLeftOnRectangleIcon,
-  ExclamationTriangleIcon
+  ExclamationTriangleIcon,
+  CubeIcon,
+  ClipboardDocumentListIcon,
+  HomeIcon,
+  PlusIcon,
+  WrenchScrewdriverIcon,
+  ChartBarIcon,
+  UsersIcon
 } from '@heroicons/react/24/outline'
 
 const Navbar = () => {
@@ -29,6 +36,10 @@ const Navbar = () => {
   const [unreadNotifications, setUnreadNotifications] = useState(0)
   const [searchTerm, setSearchTerm] = useState('')
   const [showSearch, setShowSearch] = useState(false)
+  const [stats, setStats] = useState({
+    productosBajoStock: 0,
+    ordenesActivas: 0
+  })
 
   // Actualizar hora cada segundo
   useEffect(() => {
@@ -39,7 +50,7 @@ const Navbar = () => {
     return () => clearInterval(timer)
   }, [])
 
-  // Cargar notificaciones
+  // Cargar notificaciones y estadísticas
   useEffect(() => {
     fetchNotifications()
     const interval = setInterval(fetchNotifications, 30000)
@@ -47,7 +58,7 @@ const Navbar = () => {
   }, [])
 
   const fetchNotifications = async () => {
-    // Simular notificaciones (en producción, esto vendría de la API)
+    // Simular notificaciones
     const mockNotifications = [
       {
         id: 1,
@@ -64,19 +75,17 @@ const Navbar = () => {
         message: 'Orden #ORD-00123 ha sido finalizada',
         time: 'Hace 30 minutos',
         read: true
-      },
-      {
-        id: 3,
-        type: 'urgent',
-        title: 'Cliente espera repuesto',
-        message: 'Juan Pérez espera la llegada de la cadena',
-        time: 'Hace 1 hora',
-        read: false
       }
     ]
     
     setNotifications(mockNotifications)
     setUnreadNotifications(mockNotifications.filter(n => !n.read).length)
+    
+    // Simular estadísticas
+    setStats({
+      productosBajoStock: 3,
+      ordenesActivas: 5
+    })
   }
 
   const handleLogout = async () => {
@@ -114,11 +123,12 @@ const Navbar = () => {
   }
 
   const navItems = [
-  { path: '/', label: 'Dashboard' },
-  { path: '/inventario', label: 'Inventario' },
-  { path: '/ordenes', label: 'Órdenes' },
-  { path: '/calendario', label: 'Calendario' },
-]
+    { path: '/', label: 'Dashboard', icon: HomeIcon },
+    { path: '/inventario', label: 'Inventario', icon: CubeIcon, badge: stats.productosBajoStock },
+    { path: '/ordenes', label: 'Órdenes', icon: ClipboardDocumentListIcon, badge: stats.ordenesActivas },
+    { path: '/calendario', label: 'Calendario', icon: CalendarIcon },
+  ]
+
   const handleSearch = (e) => {
     e.preventDefault()
     if (searchTerm.trim()) {
@@ -133,17 +143,33 @@ const Navbar = () => {
     setUnreadNotifications(0)
   }
 
+  // Acciones rápidas para el menú móvil
+  const quickActions = [
+    { 
+      label: 'Nueva Orden', 
+      icon: PlusIcon, 
+      onClick: () => navigate('/ordenes?new=true'),
+      color: 'bg-blue-500 hover:bg-blue-600'
+    },
+    { 
+      label: 'Agregar Producto', 
+      icon: CubeIcon, 
+      onClick: () => navigate('/inventario?new=true'),
+      color: 'bg-green-500 hover:bg-green-600'
+    },
+  ]
+
   return (
     <>
-      <nav className="navbar sticky top-0 z-40">
-        <div className="container-responsive">
+      <nav className="navbar sticky top-0 z-40 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
+        <div className="container mx-auto px-3 sm:px-4 lg:px-6">
           {/* Primera fila: Logo, menú móvil y usuario */}
           <div className="flex items-center justify-between py-3">
             <div className="flex items-center space-x-3">
               {/* Botón menú móvil */}
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="md:hidden p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                className="lg:hidden p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                 aria-label="Menú"
               >
                 {mobileMenuOpen ? (
@@ -163,45 +189,33 @@ const Navbar = () => {
                     Servi-Stock
                   </h1>
                   <p className="text-xs text-gray-500 dark:text-gray-400">
-              
+                    Gestión de Taller
                   </p>
                 </div>
               </Link>
             </div>
 
-            {/* Barra de búsqueda (desktop) */}
-            <div className="hidden md:block flex-1 max-w-md mx-4">
-              <form onSubmit={handleSearch} className="relative">
-                <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Buscar órdenes, productos..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full input-field pl-9 sm:pl-10 py-1.5 text-sm"
-                />
-                {searchTerm && (
-                  <button
-                    type="button"
-                    onClick={() => setSearchTerm('')}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  >
-                    <XMarkIcon className="w-4 h-4" />
-                  </button>
-                )}
-              </form>
-            </div>
-
-            {/* Fecha y hora - Desktop */}
-            <div className="hidden md:flex items-center space-x-4">
-              <div className="hidden lg:flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
-                <CalendarIcon className="w-4 h-4" />
-                <span>{formatDate()}</span>
-              </div>
-              <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
-                <ClockIcon className="w-4 h-4" />
-                <span className="font-mono">{formatTime()}</span>
-              </div>
+            {/* Navegación principal - Desktop */}
+            <div className="hidden lg:flex items-center space-x-1">
+              {navItems.map((item) => (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    isActive(item.path)
+                      ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-md'
+                      : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                  }`}
+                >
+                  <item.icon className="w-4 h-4" />
+                  <span>{item.label}</span>
+                  {item.badge && item.badge > 0 && (
+                    <span className="ml-2 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                      {item.badge}
+                    </span>
+                  )}
+                </Link>
+              ))}
             </div>
 
             {/* Controles de usuario */}
@@ -210,11 +224,17 @@ const Navbar = () => {
                 {/* Botón de búsqueda móvil */}
                 <button
                   onClick={() => setShowSearch(!showSearch)}
-                  className="md:hidden p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+                  className="lg:hidden p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
                   aria-label="Buscar"
                 >
                   <MagnifyingGlassIcon className="w-5 h-5" />
                 </button>
+
+                {/* Fecha y hora - Mobile/Tablet */}
+                <div className="hidden md:flex lg:hidden items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
+                  <ClockIcon className="w-4 h-4" />
+                  <span className="font-mono">{formatTime()}</span>
+                </div>
 
                 {/* Botón de notificaciones */}
                 <div className="relative">
@@ -235,7 +255,7 @@ const Navbar = () => {
                 {/* Botón modo oscuro */}
                 <button
                   onClick={toggleDarkMode}
-                  className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                  className="hidden sm:block p-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
                   aria-label={darkMode ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
                 >
                   {darkMode ? (
@@ -307,6 +327,18 @@ const Navbar = () => {
                       
                       <div className="border-t border-gray-100 dark:border-gray-700 py-2">
                         <button
+                          onClick={() => toggleDarkMode()}
+                          className="flex items-center space-x-3 w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                        >
+                          {darkMode ? (
+                            <SunIcon className="w-4 h-4 text-yellow-500" />
+                          ) : (
+                            <MoonIcon className="w-4 h-4 text-gray-600" />
+                          )}
+                          <span>{darkMode ? 'Modo claro' : 'Modo oscuro'}</span>
+                        </button>
+                        
+                        <button
                           onClick={handleLogout}
                           className="flex items-center space-x-3 w-full px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                         >
@@ -323,7 +355,7 @@ const Navbar = () => {
 
           {/* Barra de búsqueda móvil */}
           {showSearch && (
-            <div className="md:hidden mt-3">
+            <div className="lg:hidden mt-3">
               <form onSubmit={handleSearch} className="relative">
                 <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
                 <input
@@ -345,34 +377,75 @@ const Navbar = () => {
             </div>
           )}
 
-          {/* Segunda fila: Navegación - Desktop */}
-          <div className="hidden md:flex items-center pb-2">
-            <div className="flex items-center space-x-1">
-              {navItems.map((item) => (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    isActive(item.path)
-                      ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-md'
-                      : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
-                  }`}
-                >
-                  {item.label}
-                  {item.path === '/inventario' && unreadNotifications > 0 && (
-                    <span className="ml-2 w-2 h-2 bg-red-500 rounded-full inline-block"></span>
+          {/* Segunda fila: Navegación y búsqueda - Desktop */}
+          <div className="hidden lg:flex items-center justify-between py-3 border-t border-gray-200 dark:border-gray-800">
+            <div className="flex items-center space-x-6">
+              {/* Barra de búsqueda desktop */}
+              <div className="flex-1 max-w-md">
+                <form onSubmit={handleSearch} className="relative">
+                  <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Buscar órdenes, productos..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full input-field pl-9 sm:pl-10 py-1.5 text-sm"
+                  />
+                  {searchTerm && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchTerm('')}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      <XMarkIcon className="w-4 h-4" />
+                    </button>
                   )}
-                </Link>
-              ))}
+                </form>
+              </div>
+
+              {/* Fecha y hora - Desktop */}
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
+                  <CalendarIcon className="w-4 h-4" />
+                  <span>{formatDate()}</span>
+                </div>
+                <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
+                  <ClockIcon className="w-4 h-4" />
+                  <span className="font-mono">{formatTime()}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Estadísticas rápidas */}
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={() => navigate('/inventario')}
+                className="flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors"
+              >
+                <ExclamationTriangleIcon className="w-4 h-4 text-red-600 dark:text-red-400" />
+                <span className="text-sm font-medium text-red-700 dark:text-red-300">
+                  {stats.productosBajoStock} bajo stock
+                </span>
+              </button>
+              
+              <button
+                onClick={() => navigate('/ordenes')}
+                className="flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-yellow-50 dark:bg-yellow-900/30 hover:bg-yellow-100 dark:hover:bg-yellow-900/40 transition-colors"
+              >
+                <WrenchScrewdriverIcon className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />
+                <span className="text-sm font-medium text-yellow-700 dark:text-yellow-300">
+                  {stats.ordenesActivas} órdenes activas
+                </span>
+              </button>
             </div>
           </div>
         </div>
       </nav>
 
-      {/* Menú móvil */}
+      {/* Menú móvil completo */}
       {mobileMenuOpen && (
-        <div className="md:hidden fixed inset-0 z-50 bg-black bg-opacity-50">
-          <div className="absolute top-0 left-0 w-64 h-full bg-white dark:bg-gray-900 shadow-xl animate-slide-in">
+        <div className="lg:hidden fixed inset-0 z-50 bg-black bg-opacity-50">
+          <div className="absolute top-0 left-0 w-full sm:w-80 h-full bg-white dark:bg-gray-900 shadow-xl animate-slide-in">
             <div className="p-4 border-b border-gray-200 dark:border-gray-800">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center space-x-3">
@@ -416,7 +489,7 @@ const Navbar = () => {
 
             {/* Navegación móvil */}
             <div className="p-4">
-              <nav className="space-y-1">
+              <nav className="space-y-1 mb-6">
                 {navItems.map((item) => (
                   <Link
                     key={item.path}
@@ -428,18 +501,99 @@ const Navbar = () => {
                         : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
                     }`}
                   >
-                    {item.path === '/' && <Cog6ToothIcon className="w-5 h-5" />}
-                    {item.path === '/inventario' && <ExclamationTriangleIcon className="w-5 h-5" />}
-                    {item.path === '/ordenes' && <BellIcon className="w-5 h-5" />}
+                    <item.icon className="w-5 h-5" />
                     <span className="font-medium">{item.label}</span>
-                    {item.path === '/inventario' && unreadNotifications > 0 && (
+                    {item.badge && item.badge > 0 && (
                       <span className="ml-auto w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-                        {unreadNotifications}
+                        {item.badge}
                       </span>
                     )}
                   </Link>
                 ))}
               </nav>
+
+              {/* Acciones rápidas móvil */}
+              <div className="mb-6">
+                <h3 className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-3 uppercase tracking-wider">
+                  Acciones Rápidas
+                </h3>
+                <div className="grid grid-cols-2 gap-2">
+                  {quickActions.map((action, index) => (
+                    <button
+                      key={index}
+                      onClick={() => {
+                        action.onClick()
+                        setMobileMenuOpen(false)
+                      }}
+                      className={`${action.color} text-white p-2 rounded-lg flex flex-col items-center justify-center text-center transition-all duration-200 hover:shadow-md`}
+                    >
+                      <action.icon className="w-4 h-4 mb-1" />
+                      <span className="text-xs font-medium">{action.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Estadísticas móvil */}
+              <div className="space-y-3 mb-6">
+                <button
+                  onClick={() => {
+                    navigate('/inventario')
+                    setMobileMenuOpen(false)
+                  }}
+                  className="w-full bg-white dark:bg-gray-800 p-3 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 border border-gray-200 dark:border-gray-700"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
+                        <ExclamationTriangleIcon className="w-5 h-5 text-red-600 dark:text-red-400" />
+                      </div>
+                      <div className="text-left">
+                        <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          Stock bajo
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          Requiere atención
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-lg font-bold text-red-600 dark:text-red-400">
+                        {stats.productosBajoStock}
+                      </span>
+                    </div>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => {
+                    navigate('/ordenes')
+                    setMobileMenuOpen(false)
+                  }}
+                  className="w-full bg-white dark:bg-gray-800 p-3 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 border border-gray-200 dark:border-gray-700"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="p-2 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg">
+                        <WrenchScrewdriverIcon className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
+                      </div>
+                      <div className="text-left">
+                        <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          Órdenes activas
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          En proceso
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-lg font-bold text-yellow-600 dark:text-yellow-400">
+                        {stats.ordenesActivas}
+                      </span>
+                    </div>
+                  </div>
+                </button>
+              </div>
             </div>
 
             {/* Notificaciones móvil */}
@@ -498,24 +652,24 @@ const Navbar = () => {
                 <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
                   <div className="flex items-center space-x-1">
                     <CalendarIcon className="w-4 h-4" />
-                    <span>{formatDate()}</span>
+                    <span className="text-xs">{formatDate()}</span>
                   </div>
                   <div className="flex items-center space-x-1">
                     <ClockIcon className="w-4 h-4" />
-                    <span className="font-mono">{formatTime()}</span>
+                    <span className="font-mono text-xs">{formatTime()}</span>
                   </div>
                 </div>
                 
                 <div className="flex space-x-2">
                   <button
                     onClick={toggleDarkMode}
-                    className="flex-1 btn-secondary py-2 text-sm"
+                    className="flex-1 btn-secondary py-2 text-xs"
                   >
                     {darkMode ? 'Modo claro' : 'Modo oscuro'}
                   </button>
                   <button
                     onClick={handleLogout}
-                    className="flex-1 btn-primary py-2 text-sm"
+                    className="flex-1 btn-primary py-2 text-xs"
                   >
                     Cerrar sesión
                   </button>

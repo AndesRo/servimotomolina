@@ -2,7 +2,6 @@ import React, { Suspense, lazy } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { useAppContext } from './context/AppContext'
 import Navbar from './components/Navbar'
-import Sidebar from './components/Sidebar'
 
 // Componentes lazy-loaded
 const Login = lazy(() => import('./pages/Login'))
@@ -23,6 +22,18 @@ const PrivateRoute = ({ children }) => {
   }
   
   return user ? children : <Navigate to="/login" />
+}
+
+// Layout sin Sidebar - solo Navbar
+const Layout = ({ children }) => {
+  return (
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <Navbar />
+      <main className="pt-16 md:pt-20">
+        {children}
+      </main>
+    </div>
+  )
 }
 
 function App() {
@@ -60,7 +71,6 @@ function App() {
             </PrivateRoute>
           } />
 
-          {/* Nueva ruta para Calendario */}
           <Route path="/calendario" element={
             <PrivateRoute>
               <Layout>
@@ -73,20 +83,6 @@ function App() {
         </Routes>
       </Suspense>
     </Router>
-  )
-}
-
-const Layout = ({ children }) => {
-  return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <Navbar />
-      <div className="flex">
-        <Sidebar />
-        <main className="flex-1 p-6">
-          {children}
-        </main>
-      </div>
-    </div>
   )
 }
 
