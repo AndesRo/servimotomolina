@@ -152,15 +152,15 @@ const Navbar = () => {
               <Link to="/" className="flex items-center space-x-2">
                 <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-blue-600 to-blue-800 rounded-lg sm:rounded-xl flex items-center justify-center">
                   <span className="text-white font-bold text-sm sm:text-base">
-                    SM
+                    SP
                   </span>
                 </div>
                 <div className="hidden sm:block">
                   <h1 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-white">
-                    Servi-Stock
+                    System-Pro
                   </h1>
                   <p className="text-xs text-gray-500 dark:text-gray-400">
-                    Gestión de Taller
+                    Sistemas de Gestion de Invenatario
                   </p>
                 </div>
               </Link>
@@ -393,7 +393,7 @@ const Navbar = () => {
                   </div>
                   <div>
                     <h2 className="font-bold text-gray-800 dark:text-white">
-                      Servi-Stock
+                      System-Pro
                     </h2>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
                       Menú de navegación
