@@ -31,88 +31,14 @@ const Ordenes = () => {
 
   const [showModal, setShowModal] = useState(false);
   const [editingOrden, setEditingOrden] = useState(null);
-
   const [selectedRepuestos, setSelectedRepuestos] = useState([]);
-  const [selectedOrdenForActions, setSelectedOrdenForActions] =
-    useState(null);
-  const [showActionsModal, setShowActionsModal] = useState(false);
 
-  const [selectedOrdenDetalle, setSelectedOrdenDetalle] = useState(null);
-  const [showDetalleModal, setShowDetalleModal] = useState(false);
+  const [selectedOrdenForActions, setSelectedOrdenForActions] = useState(null);
+  const [showActionsModal, setShowActionsModal] = useState(false);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [filterEstado, setFilterEstado] = useState("todos");
   const [showFilters, setShowFilters] = useState(false);
-
-  const [serviciosPredefinidos] = useState([
-    {
-      id: "cambio-aceite",
-      nombre: "Cambio de aceite",
-      repuestos: ["Aceite motor 10W40", "Filtro de aceite"],
-      tiempoEstimado: "30-45 minutos",
-      checklist: [
-        "Revisar nivel y estado del aceite antiguo",
-        "Cambiar filtro de aceite",
-        "Revisar posible presencia de limaduras",
-        "Registrar kilometraje actual en la ficha",
-      ],
-      proximo:
-        "Próximo cambio de aceite en 3.000 - 5.000 km o 6 meses (lo que ocurra primero).",
-    },
-    {
-      id: "ajuste-cadena",
-      nombre: "Ajuste de cadena",
-      repuestos: ["Lubricante de cadena"],
-      tiempoEstimado: "20-30 minutos",
-      checklist: [
-        "Revisar tensión de cadena",
-        "Revisar desgaste de piñón y corona",
-        "Lubricar cadena",
-        "Verificar alineación de la rueda trasera",
-      ],
-      proximo: "Revisar tensión y lubricación de cadena cada 1.000 km.",
-    },
-    {
-      id: "mantencion-completa",
-      nombre: "Mantención completa",
-      repuestos: [
-        "Aceite motor",
-        "Filtro de aceite",
-        "Filtro de aire",
-        "Bujías",
-      ],
-      tiempoEstimado: "1 día de trabajo",
-      checklist: [
-        "Cambio de aceite y filtro",
-        "Revisión y limpieza filtro de aire",
-        "Revisión bujías",
-        "Revisión frenos (pastillas y discos)",
-        "Revisión dirección y suspensión",
-        "Revisión sistema eléctrico y luces",
-      ],
-      proximo: "Próxima mantención completa en 10.000 km o 12 meses.",
-    },
-    {
-      id: "cambio-pastillas",
-      nombre: "Cambio pastillas de freno",
-      repuestos: [
-        "Pastillas de freno delanteras",
-        "Pastillas de freno traseras",
-      ],
-      tiempoEstimado: "45-60 minutos",
-      checklist: [
-        "Revisar espesor de pastillas actuales",
-        "Verificar estado de discos",
-        "Cambiar pastillas y asentar correctamente",
-        "Revisar nivel de líquido de frenos",
-      ],
-      proximo:
-        "Revisar estado de pastillas cada 5.000 km o ante ruidos anormales.",
-    },
-  ]);
-
-  const [selectedServicioId, setSelectedServicioId] = useState("");
-  const [recordarProxima, setRecordarProxima] = useState(false);
 
   const [form, setForm] = useState({
     cliente_nombre: "",
@@ -259,14 +185,23 @@ const Ordenes = () => {
       element.style.color = "black";
       element.style.fontFamily = "Arial, sans-serif";
 
-      const fecha = new Date(orden.created_at).toLocaleDateString("es-ES", {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
+      const fecha = new Date(orden.created_at).toLocaleDateString(
+        "es-ES",
+        {
+          weekday: "long",
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        }
+      );
+
+      const totalRepuestos =
+        orden.ordenes_repuestos?.reduce(
+          (sum, rep) => sum + (rep.cantidad || 0),
+          0
+        ) || 0;
 
       const totalRepuestosPrecio =
         orden.ordenes_repuestos?.reduce((sum, rep) => {
@@ -275,6 +210,30 @@ const Ordenes = () => {
         }, 0) || 0;
 
       const totalOrden = calcularTotalOrden(orden);
+
+      const filasRepuestos =
+        orden.ordenes_repuestos?.map((repuesto, index) => {
+          const precio = repuesto.inventario?.precio || 0;
+          const subtotal = precio * (repuesto.cantidad || 0);
+          return `
+            <tr style="${
+              index % 2 === 0 ? "background:#f9fafb;" : ""
+            }">
+              <td style="padding:10px;border:1px solid #d1d5db;">
+                ${repuesto.inventario?.nombre || "Producto no encontrado"}
+              </td>
+              <td style="padding:10px;text-align:center;border:1px solid #d1d5db;">
+                ${repuesto.cantidad}
+              </td>
+              <td style="padding:10px;border:1px solid #d1d5db;">
+                ${formatPrecio(precio)}
+              </td>
+              <td style="padding:10px;border:1px solid #d1d5db;">
+                ${formatPrecio(subtotal)}
+              </td>
+            </tr>
+          `;
+        }).join("") || "";
 
       element.innerHTML = `
         <div style="max-width:800px;margin:0 auto;">
@@ -285,70 +244,106 @@ const Ordenes = () => {
               <p style="color:#6b7280;margin:0;font-size:12px;">Orden de Trabajo y Presupuesto</p>
             </div>
             <div style="text-align:right;">
-              <div style="font-size:24px;font-weight:bold;color:#1e40af;">ORDEN ${orden.id
-                .substring(0, 8)
-                .toUpperCase()}</div>
+              <div style="font-size:24px;font-weight:bold;color:#1e40af;">ORDEN ${
+                orden.id.substring(0, 8).toUpperCase()
+              }</div>
               <div style="font-size:14px;color:#6b7280;">${fecha}</div>
             </div>
           </div>
 
           <div style="margin-bottom:30px;">
-            <h2 style="color:#1e40af;border-bottom:2px solid #e5e7eb;padding-bottom:10px;font-size:18px;">Información del Cliente</h2>
+            <h2 style="color:#1e40af;border-bottom:2px solid #e5e7eb;padding-bottom:10px;font-size:18px;">
+              Información del Cliente
+            </h2>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:15px;">
-              <div><strong>Nombre:</strong> ${orden.cliente_nombre ||
-                "No especificado"}</div>
-              <div><strong>Teléfono:</strong> ${orden.cliente_telefono ||
-                "No registrado"}</div>
-              <div><strong>Marca:</strong> ${orden.moto_marca ||
-                "No especificada"}</div>
-              <div><strong>Modelo:</strong> ${orden.moto_modelo ||
-                "No especificado"}</div>
+              <div>
+                <strong>Nombre</strong><br/>
+                ${orden.cliente_nombre || "No especificado"}
+              </div>
+              <div>
+                <strong>Teléfono</strong><br/>
+                ${orden.cliente_telefono || "No registrado"}
+              </div>
+              <div>
+                <strong>Marca</strong><br/>
+                ${orden.moto_marca || "No especificada"}
+              </div>
+              <div>
+                <strong>Modelo</strong><br/>
+                ${orden.moto_modelo || "No especificado"}
+              </div>
             </div>
           </div>
 
           <div style="margin-bottom:30px;">
-            <h2 style="color:#1e40af;border-bottom:2px solid #e5e7eb;padding-bottom:10px;font-size:18px;">Detalles de la Reparación y Presupuesto</h2>
+            <h2 style="color:#1e40af;border-bottom:2px solid #e5e7eb;padding-bottom:10px;font-size:18px;">
+              Detalles de la Reparación y Presupuesto
+            </h2>
             <div style="margin-top:15px;">
-              <strong>Servicio:</strong>
+              <strong>Servicio</strong>
               <div style="background:#f9fafb;padding:15px;border-radius:8px;margin-top:10px;border-left:4px solid #3b82f6;">
                 ${orden.problema || "No especificado"}
               </div>
             </div>
+
             <div style="margin-top:20px;">
               <h3 style="color:#374151;font-size:16px;margin-bottom:10px;">Desglose del Presupuesto</h3>
               <table style="width:100%;border-collapse:collapse;background:#f9fafb;border-radius:8px;overflow:hidden;">
                 <tbody>
                   <tr>
                     <td style="padding:10px 15px;border-bottom:1px solid #e5e7eb;">Servicio</td>
-                    <td style="padding:10px 15px;border-bottom:1px solid #e5e7eb;text-align:right;font-weight:bold;">${formatPrecio(
-                      orden.precio_servicio || 0
-                    )}</td>
+                    <td style="padding:10px 15px;border-bottom:1px solid #e5e7eb;text-align:right;font-weight:bold;">
+                      ${formatPrecio(orden.precio_servicio || 0)}
+                    </td>
                   </tr>
                   <tr>
-                    <td style="padding:10px 15px;border-bottom:1px solid #e5e7eb;">Mano de obra</td>
-                    <td style="padding:10px 15px;border-bottom:1px solid #e5e7eb;text-align:right;font-weight:bold;">${formatPrecio(
-                      orden.precio_mano_obra || 0
-                    )}</td>
+                    <td style="padding:10px 15px;border-bottom:1px solid #e5e7eb;">Mano de Obra</td>
+                    <td style="padding:10px 15px;border-bottom:1px solid #e5e7eb;text-align:right;font-weight:bold;">
+                      ${formatPrecio(orden.precio_mano_obra || 0)}
+                    </td>
                   </tr>
                   ${
                     orden.ordenes_repuestos &&
                     orden.ordenes_repuestos.length > 0
-                      ? `<tr>
-                    <td style="padding:10px 15px;border-bottom:1px solid #e5e7eb;">Repuestos</td>
-                    <td style="padding:10px 15px;border-bottom:1px solid #e5e7eb;text-align:right;font-weight:bold;">${formatPrecio(
-                      totalRepuestosPrecio
-                    )}</td>
-                  </tr>`
+                      ? `
+                    <tr>
+                      <td style="padding:10px 15px;border-bottom:1px solid #e5e7eb;">Repuestos</td>
+                      <td style="padding:10px 15px;border-bottom:1px solid #e5e7eb;text-align:right;font-weight:bold;">
+                        ${formatPrecio(totalRepuestosPrecio)}
+                      </td>
+                    </tr>`
                       : ""
                   }
                   <tr style="background:#1e40af;color:white;">
                     <td style="padding:12px 15px;font-weight:bold;">TOTAL</td>
-                    <td style="padding:12px 15px;text-align:right;font-weight:bold;font-size:18px;">${formatPrecio(
-                      totalOrden
-                    )}</td>
+                    <td style="padding:12px 15px;text-align:right;font-weight:bold;font-size:18px;">
+                      ${formatPrecio(totalOrden)}
+                    </td>
                   </tr>
                 </tbody>
               </table>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:20px;">
+              <div>
+                <strong>Estado</strong><br/>
+                <span style="
+                  padding:4px 12px;border-radius:20px;font-size:12px;font-weight:bold;margin-left:10px;
+                  ${
+                    orden.estado === "Finalizada"
+                      ? "background:#10b981;color:white;"
+                      : orden.estado === "En reparación"
+                      ? "background:#f59e0b;color:white;"
+                      : "background:#6b7280;color:white;"
+                  }
+                ">
+                  ${orden.estado}
+                </span>
+              </div>
+              <div>
+                <strong>Repuestos Utilizados</strong><br/>
+                ${totalRepuestos}
+              </div>
             </div>
           </div>
 
@@ -356,7 +351,9 @@ const Ordenes = () => {
             orden.ordenes_repuestos && orden.ordenes_repuestos.length > 0
               ? `
           <div style="margin-bottom:30px;">
-            <h2 style="color:#1e40af;border-bottom:2px solid #e5e7eb;padding-bottom:10px;font-size:18px;">Repuestos Utilizados</h2>
+            <h2 style="color:#1e40af;border-bottom:2px solid #e5e7eb;padding-bottom:10px;font-size:18px;">
+              Repuestos Utilizados
+            </h2>
             <table style="width:100%;border-collapse:collapse;margin-top:15px;">
               <thead>
                 <tr style="background:#1e40af;color:white;">
@@ -367,34 +364,14 @@ const Ordenes = () => {
                 </tr>
               </thead>
               <tbody>
-                ${orden.ordenes_repuestos
-                  .map((rep, index) => {
-                    const precio = rep.inventario?.precio || 0;
-                    const subtotal = precio * (rep.cantidad || 0);
-                    return `
-                    <tr style="background:${
-                      index % 2 === 0 ? "#f9fafb" : "white"
-                    };">
-                      <td style="padding:10px;border:1px solid #d1d5db;">${
-                        rep.inventario?.nombre || "Producto no encontrado"
-                      }</td>
-                      <td style="padding:10px;text-align:center;border:1px solid #d1d5db;">${
-                        rep.cantidad
-                      }</td>
-                      <td style="padding:10px;border:1px solid #d1d5db;">${formatPrecio(
-                        precio
-                      )}</td>
-                      <td style="padding:10px;border:1px solid #d1d5db;">${formatPrecio(
-                        subtotal
-                      )}</td>
-                    </tr>`;
-                  })
-                  .join("")}
+                ${filasRepuestos}
                 <tr style="background:#f3f4f6;font-weight:bold;">
-                  <td colspan="3" style="padding:10px;border:1px solid #d1d5db;text-align:right;">Total Repuestos</td>
-                  <td style="padding:10px;border:1px solid #d1d5db;">${formatPrecio(
-                    totalRepuestosPrecio
-                  )}</td>
+                  <td colspan="3" style="padding:10px;border:1px solid #d1d5db;text-align:right;">
+                    Total Repuestos
+                  </td>
+                  <td style="padding:10px;border:1px solid #d1d5db;">
+                    ${formatPrecio(totalRepuestosPrecio)}
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -403,26 +380,42 @@ const Ordenes = () => {
           }
 
           <div style="margin-top:40px;padding-top:20px;border-top:2px dashed #d1d5db;">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:20px;">
+            <div style="display:grid;grid-template-columns:1fr;gap:20px;">
               <div>
-                <div style="border-top:1px solid #d1d5db;padding-top:10px;text-align:center;height:60px;">
-                  <p style="font-size:12px;color:#6b7280;">Firma del Mecánico</p>
-                </div>
+                <h3 style="color:#1e40af;font-size:16px;margin-bottom:15px;">Notas Importantes</h3>
+                <ul style="color:#6b7280;font-size:12px;line-height:1.6;padding-left:20px;">
+                  <li>Esta orden y presupuesto son válidos por 30 días desde la fecha de emisión.</li>
+                  <li>Los repuestos tienen garantía de 90 días.</li>
+                  <li>El cliente debe presentar esta orden para retirar su motocicleta.</li>
+                  <li>Cualquier modificación debe ser autorizada por el cliente.</li>
+                  <li>El presupuesto puede variar si se requieren repuestos adicionales.</li>
+                </ul>
               </div>
-              <div>
-                <div style="border-top:1px solid #d1d5db;padding-top:10px;text-align:center;height:60px;">
-                  <p style="font-size:12px;color:#6b7280;">Firma del Cliente</p>
-                  <p style="font-size:10px;color:#9ca3af;">Acepto el presupuesto y autorizo el trabajo</p>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:20px;">
+                <div>
+                  <div style="border-top:1px solid #d1d5db;padding-top:10px;text-align:center;height:60px;">
+                    <p style="font-size:12px;color:#6b7280;">Firma del Mecánico</p>
+                  </div>
+                </div>
+                <div>
+                  <div style="border-top:1px solid #d1d5db;padding-top:10px;text-align:center;height:60px;">
+                    <p style="font-size:12px;color:#6b7280;">Firma del Cliente</p>
+                    <p style="font-size:10px;color:#9ca3af;">
+                      Acepto el presupuesto y autorizo el trabajo
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          <div style="margin-top:50px;padding-top:20px;border-top:2px solid #1e40af;text-align:center;font-size:11px;color:#6b7280;">
-            <p>Servi Moto • Taller Mecánico</p>
-            <p>Orden y presupuesto generados el ${new Date().toLocaleDateString(
-              "es-ES"
-            )} • ID: ${orden.id.substring(0, 8).toUpperCase()}</p>
+            <div style="margin-top:50px;padding-top:20px;border-top:2px solid #1e40af;text-align:center;font-size:11px;color:#6b7280;">
+              <p>Servi Moto • Taller Mecánico</p>
+              <p>Orden y presupuesto generados el ${new Date().toLocaleDateString(
+                "es-ES"
+              )} • ID: ${orden.id
+        .substring(0, 8)
+        .toUpperCase()}</p>
+            </div>
           </div>
         </div>
       `;
@@ -435,10 +428,16 @@ const Ordenes = () => {
         backgroundColor: "#ffffff",
         logging: false,
       });
+
       document.body.removeChild(element);
 
       const imgData = canvas.toDataURL("image/png");
-      const pdf = new jsPDF("p", "mm", "a4");
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      });
+
       const imgWidth = 190;
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
@@ -448,9 +447,10 @@ const Ordenes = () => {
       const nombreCliente =
         orden.cliente_nombre?.replace(/[^a-zA-Z0-9]/g, "").substring(0, 20) ||
         "cliente";
-      const fileName = `orden_${nombreCliente}_${fechaStr}.pdf`;
 
+      const fileName = `orden_${nombreCliente}_${fechaStr}.pdf`;
       pdf.save(fileName);
+
       alert(`✅ PDF "${fileName}" generado exitosamente`);
     } catch (error) {
       console.error("Error generando PDF:", error);
@@ -464,12 +464,13 @@ const Ordenes = () => {
       return;
     }
 
-    let phone = orden.cliente_telefono.replace(/\D/g, "");
+    let phone = orden.cliente_telefono.replace(/[^0-9]/g, "");
     if (phone.startsWith("56")) phone = phone.substring(2);
     if (phone.startsWith("0")) phone = phone.substring(1);
+
     if (phone.length !== 9) {
       alert(
-        "❌ Número de teléfono inválido. Debe tener 9 dígitos (ej: 912345678)"
+        "❌ Número de teléfono inválido. Debe tener 9 dígitos (ej: 912345678)."
       );
       return;
     }
@@ -487,57 +488,37 @@ const Ordenes = () => {
         return sum + precio * (rep.cantidad || 0);
       }, 0) || 0;
 
+    const totalOrden = calcularTotalOrden(orden);
+
     const repuestosText =
       orden.ordenes_repuestos && orden.ordenes_repuestos.length > 0
         ? `\n\nRepuestos utilizados:\n${orden.ordenes_repuestos
             .map((rep) => {
               const precio = rep.inventario?.precio || 0;
-              return `- ${rep.cantidad}x ${
-                rep.inventario?.nombre || "Producto"
-              } (${formatPrecio(precio)} c/u)`;
+              return `${rep.cantidad}x ${rep.inventario?.nombre || "Producto"} - ${formatPrecio(
+                precio
+              )}`;
             })
-            .join("\n")}`
+            .join("\n")}\nTotal repuestos: ${formatPrecio(
+            totalRepuestosPrecio
+          )}`
         : "";
-
-    let proximaMantencionText = "";
-    if (recordarProxima && (orden.tipo_servicio || selectedServicioId)) {
-      const servicio = serviciosPredefinidos.find(
-        (s) =>
-          s.id === orden.tipo_servicio ||
-          s.id === selectedServicioId
-      );
-      if (servicio) {
-        proximaMantencionText = `\n\nPróxima mantención recomendada:\n${servicio.proximo}`;
-      }
-    }
 
     const message = `Hola ${
       orden.cliente_nombre || ""
-    }!
-
-INFORMACIÓN DE TU ORDEN - SERVI MOTO
-
-Orden: ${orden.id.substring(0, 8).toUpperCase()}
-Fecha: ${fecha}
-Moto: ${orden.moto_marca || "No especificada"} ${
-      orden.moto_modelo || ""
-    }
-Servicio: ${orden.problema || "No especificado"}
-Estado: ${orden.estado}
-
-PRESUPUESTO:
-Servicio: ${formatPrecio(orden.precio_servicio || 0)}
-Mano de obra: ${formatPrecio(orden.precio_mano_obra || 0)}
-Repuestos: ${formatPrecio(totalRepuestosPrecio)}
-TOTAL: ${formatPrecio(
-      calcularTotalOrden(orden)
-    )}${repuestosText}${proximaMantencionText}
-
-Taller Servi Moto
-Horario: Lunes a Viernes 08:00 - 18:00
-
-Gracias por confiar en nosotros.
-Mensaje generado automáticamente por el sistema Servi Moto`;
+    }! 👋\n\nINFORMACIÓN DE TU ORDEN - SERVI MOTO\n\nOrden: ${orden.id
+      .substring(0, 8)
+      .toUpperCase()}\nFecha: ${fecha}\n\nMoto: ${
+      orden.moto_marca || "No especificada"
+    } ${orden.moto_modelo || ""}\nServicio: ${
+      orden.problema || "No especificado"
+    }\nEstado: ${orden.estado}\n\nPRESUPUESTO:\nServicio: ${formatPrecio(
+      orden.precio_servicio || 0
+    )}\nMano de obra: ${formatPrecio(
+      orden.precio_mano_obra || 0
+    )}${repuestosText}\n\nTOTAL: ${formatPrecio(
+      totalOrden
+    )}\n\nTaller Servi Moto\nHorario: Lunes a Viernes 8:00 - 18:00\n\nGracias por confiar en nosotros.\n\nMensaje generado automáticamente por el sistema Servi Moto`;
 
     const url = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(
       message
@@ -548,26 +529,26 @@ Mensaje generado automáticamente por el sistema Servi Moto`;
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      if (!form.cliente_nombre.trim()) {
+      if (!(form.cliente_nombre || "").trim()) {
         alert("❌ El nombre del cliente es requerido");
         return;
       }
-      if (!form.problema.trim()) {
+      if (!(form.problema || "").trim()) {
         alert("❌ La descripción del servicio es requerida");
         return;
       }
 
       const ordenData = {
-        cliente_nombre: form.cliente_nombre.trim(),
-        cliente_telefono: form.cliente_telefono.trim() || null,
-        moto_marca: form.moto_marca.trim() || null,
-        moto_modelo: form.moto_modelo.trim() || null,
-        problema: form.problema.trim(),
+        cliente_nombre: (form.cliente_nombre || "").trim(),
+        cliente_telefono: (form.cliente_telefono || "").trim() || null,
+        moto_marca: (form.moto_marca || "").trim() || null,
+        moto_modelo: (form.moto_modelo || "").trim() || null,
+        problema: (form.problema || "").trim(),
         estado: form.estado,
-        precio_servicio: parsePrecioInput(form.precio_servicio) || 0,
-        precio_mano_obra: parsePrecioInput(form.precio_mano_obra) || 0,
-        tipo_servicio: selectedServicioId || null,
-        updated_at: new Date().toISOString(),
+        precio_servicio:
+          parsePrecioInput(form.precio_servicio || "") || 0,
+        precio_mano_obra:
+          parsePrecioInput(form.precio_mano_obra || "") || 0,
       };
 
       let ordenId;
@@ -577,6 +558,7 @@ Mensaje generado automáticamente por el sistema Servi Moto`;
           .from("ordenes")
           .update(ordenData)
           .eq("id", editingOrden.id);
+
         if (error) throw error;
         ordenId = editingOrden.id;
         alert("✅ Orden actualizada correctamente");
@@ -584,8 +566,9 @@ Mensaje generado automáticamente por el sistema Servi Moto`;
         const { data, error } = await supabase
           .from("ordenes")
           .insert(ordenData)
-          .select("*")
+          .select()
           .single();
+
         if (error) throw error;
         ordenId = data.id;
         alert("✅ Orden creada correctamente");
@@ -615,9 +598,12 @@ Mensaje generado automáticamente por el sistema Servi Moto`;
         if (errorAnteriores) throw errorAnteriores;
 
         for (const repuesto of repuestosAnteriores || []) {
-          const producto = productos.find((p) => p.id === repuesto.producto_id);
+          const producto = productos.find(
+            (p) => p.id === repuesto.producto_id
+          );
           if (producto) {
-            const nuevoStock = (producto.stock || 0) + repuesto.cantidad;
+            const nuevoStock =
+              (producto.stock || 0) + (repuesto.cantidad || 0);
             await supabase
               .from("inventario")
               .update({ stock: nuevoStock })
@@ -625,7 +611,10 @@ Mensaje generado automáticamente por el sistema Servi Moto`;
           }
         }
 
-        await supabase.from("ordenes_repuestos").delete().eq("orden_id", ordenId);
+        await supabase
+          .from("ordenes_repuestos")
+          .delete()
+          .eq("orden_id", ordenId);
       }
 
       for (const repuesto of selectedRepuestos) {
@@ -648,7 +637,8 @@ Mensaje generado automáticamente por el sistema Servi Moto`;
           cantidad: repuesto.cantidad,
         });
 
-        const nuevoStock = (producto.stock || 0) - repuesto.cantidad;
+        const nuevoStock =
+          (producto.stock || 0) - (repuesto.cantidad || 0);
         await supabase
           .from("inventario")
           .update({ stock: nuevoStock })
@@ -669,11 +659,13 @@ Mensaje generado automáticamente por el sistema Servi Moto`;
       moto_modelo: orden.moto_modelo || "",
       problema: orden.problema || "",
       estado: orden.estado || "Pendiente",
-      precio_servicio: formatPrecioParaInput(orden.precio_servicio || 0),
-      precio_mano_obra: formatPrecioParaInput(orden.precio_mano_obra || 0),
+      precio_servicio: formatPrecioParaInput(
+        orden.precio_servicio || 0
+      ),
+      precio_mano_obra: formatPrecioParaInput(
+        orden.precio_mano_obra || 0
+      ),
     });
-
-    setSelectedServicioId(orden.tipo_servicio || "");
 
     if (orden.ordenes_repuestos) {
       const repuestos = orden.ordenes_repuestos
@@ -708,9 +700,12 @@ Mensaje generado automáticamente por el sistema Servi Moto`;
       if (repuestosError) throw repuestosError;
 
       for (const repuesto of repuestos || []) {
-        const producto = productos.find((p) => p.id === repuesto.producto_id);
+        const producto = productos.find(
+          (p) => p.id === repuesto.producto_id
+        );
         if (producto) {
-          const nuevoStock = (producto.stock || 0) + repuesto.cantidad;
+          const nuevoStock =
+            (producto.stock || 0) + (repuesto.cantidad || 0);
           await supabase
             .from("inventario")
             .update({ stock: nuevoStock })
@@ -718,8 +713,16 @@ Mensaje generado automáticamente por el sistema Servi Moto`;
         }
       }
 
-      await supabase.from("ordenes_repuestos").delete().eq("orden_id", id);
-      const { error } = await supabase.from("ordenes").delete().eq("id", id);
+      await supabase
+        .from("ordenes_repuestos")
+        .delete()
+        .eq("orden_id", id);
+
+      const { error } = await supabase
+        .from("ordenes")
+        .delete()
+        .eq("id", id);
+
       if (error) throw error;
 
       fetchOrdenes();
@@ -770,15 +773,12 @@ Mensaje generado automáticamente por el sistema Servi Moto`;
       precio_mano_obra: "",
     });
     setSelectedRepuestos([]);
-    setSelectedServicioId("");
-    setRecordarProxima(false);
     setEditingOrden(null);
-    setShowModal(false);
   };
 
   const handlePrecioChange = (field, value) => {
     const cleanValue = value.replace(/[^0-9.,]/g, "");
-    setForm({ ...form, [field]: cleanValue });
+    setForm((prev) => ({ ...prev, [field]: cleanValue }));
   };
 
   const getEstadoColor = (estado) => {
@@ -815,14 +815,8 @@ Mensaje generado automáticamente por el sistema Servi Moto`;
     }
   };
 
-  const openDetalleOrden = (orden) => {
-    setSelectedOrdenDetalle(orden);
-    setShowDetalleModal(true);
-  };
-
   const OrdenCard = ({ orden }) => {
     const totalOrden = calcularTotalOrden(orden);
-
     return (
       <div className="card mb-3 border-l-4 border-blue-500">
         <div className="flex flex-col">
@@ -870,7 +864,9 @@ Mensaje generado automáticamente por el sistema Servi Moto`;
           <div className="flex justify-between items-center pt-3 border-t border-gray-100 dark:border-gray-700">
             <div>
               <div className="text-xs text-gray-500 dark:text-gray-400">
-                {new Date(orden.created_at).toLocaleDateString("es-CL")}
+                {new Date(
+                  orden.created_at
+                ).toLocaleDateString("es-CL")}
               </div>
               <div className="text-xs text-gray-500">
                 {orden.ordenes_repuestos?.length || 0} repuestos
@@ -884,14 +880,6 @@ Mensaje generado automáticamente por el sistema Servi Moto`;
           </div>
 
           <div className="flex gap-2 mt-3">
-            <button
-              onClick={() => openDetalleOrden(orden)}
-              className="flex-1 btn-secondary text-xs py-2 flex items-center justify-center gap-1"
-              title="Ver detalle de la orden"
-            >
-              <ClipboardDocumentListIcon className="w-3 h-3" />
-              <span>Detalle</span>
-            </button>
             <button
               onClick={() => handleEdit(orden)}
               className="flex-1 btn-secondary text-xs py-2 flex items-center justify-center gap-1"
@@ -941,6 +929,11 @@ Mensaje generado automáticamente por el sistema Servi Moto`;
     );
   }
 
+  const totalFiltrado = filteredOrdenes.reduce(
+    (sum, orden) => sum + calcularTotalOrden(orden),
+    0
+  );
+
   return (
     <div className="page-container">
       <style>{style}</style>
@@ -953,13 +946,7 @@ Mensaje generado automáticamente por el sistema Servi Moto`;
             <p className="page-subtitle">
               {filteredOrdenes.length} órdenes encontradas
               <span className="ml-2 text-green-600 dark:text-green-400">
-                Total{" "}
-                {formatPrecio(
-                  filteredOrdenes.reduce(
-                    (sum, orden) => sum + calcularTotalOrden(orden),
-                    0
-                  )
-                )}
+                Total {formatPrecio(totalFiltrado)}
               </span>
             </p>
           </div>
@@ -1082,7 +1069,7 @@ Mensaje generado automáticamente por el sistema Servi Moto`;
 
       {/* Vista de órdenes */}
       <div className="card overflow-hidden">
-        {/* Vista tarjetas móvil */}
+        {/* Tarjetas móvil */}
         <div className="lg:hidden">
           {filteredOrdenes.length === 0 ? (
             <div className="text-center py-12">
@@ -1119,145 +1106,163 @@ Mensaje generado automáticamente por el sistema Servi Moto`;
 
         {/* Tabla desktop */}
         <div className="hidden lg:block overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead className="bg-gray-50 dark:bg-gray-800">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Cliente
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Moto
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Servicio
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Estado
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Total
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Fecha
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Acciones
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
-              {filteredOrdenes.map((orden) => {
-                const totalOrden = calcularTotalOrden(orden);
-                return (
-                  <tr
-                    key={orden.id}
-                    className="hover:bg-gray-50 dark:hover:bg-gray-800"
-                  >
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 h-8 w-8 flex items-center justify-center bg-blue-100 dark:bg-blue-900 rounded-lg">
-                          <UserIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                        </div>
-                        <div className="ml-3">
-                          <div className="text-sm font-medium text-gray-900 dark:text-white truncate max-w-[150px]">
-                            {orden.cliente_nombre}
-                          </div>
-                          {orden.cliente_telefono && (
-                            <div className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[150px]">
-                              {orden.cliente_telefono}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <div className="text-sm text-gray-900 dark:text-white truncate max-w-[120px]">
-                        {orden.moto_marca || "N/A"} {orden.moto_modelo || ""}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="text-sm text-gray-900 dark:text-white max-w-[200px] truncate">
-                        {orden.problema || "Sin descripción"}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <span
-                        className={`badge ${getEstadoColor(
-                          orden.estado
-                        )} text-xs`}
-                      >
-                        {orden.estado}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <CurrencyDollarIcon className="w-4 h-4 text-green-500 mr-1" />
-                        <span className="text-sm font-semibold text-green-600 dark:text-green-400">
-                          {formatPrecio(totalOrden)}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                      {new Date(orden.created_at).toLocaleDateString("es-CL")}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm font-medium">
-                      <div className="flex space-x-2">
-                        <button
-                          onClick={() => openDetalleOrden(orden)}
-                          className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 flex items-center gap-1"
-                          title="Ver detalle"
-                        >
-                          <ClipboardDocumentListIcon className="w-4 h-4" />
-                          <span className="hidden xl:inline">Detalle</span>
-                        </button>
-                        <button
-                          onClick={() => handleEdit(orden)}
-                          className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1"
-                          title="Editar orden"
-                        >
-                          <PencilIcon className="w-4 h-4" />
-                          <span className="hidden xl:inline">Editar</span>
-                        </button>
-                        <button
-                          onClick={() => {
-                            setSelectedOrdenForActions(orden);
-                            setShowActionsModal(true);
-                          }}
-                          className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 flex items-center gap-1"
-                          title="Más acciones"
-                        >
-                          <ArrowPathIcon className="w-4 h-4" />
-                          <span className="hidden xl:inline">Acciones</span>
-                        </button>
-                        <button
-                          onClick={() => handleDelete(orden.id)}
-                          className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 flex items-center gap-1"
-                          title="Eliminar orden"
-                        >
-                          <TrashIcon className="w-4 h-4" />
-                          <span className="hidden xl:inline">Eliminar</span>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-
-          {filteredOrdenes.length === 0 && (
-            <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-                <div className="text-sm text-gray-700 dark:text-gray-400 mb-2 sm:mb-0">
-                  No hay órdenes para mostrar.
-                </div>
-              </div>
+          {filteredOrdenes.length === 0 ? (
+            <div className="text-center py-12">
+              <ClipboardDocumentListIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                No se encontraron órdenes
+              </h3>
+              <p className="text-gray-600 dark:text-gray-400 mb-4">
+                {searchTerm || filterEstado !== "todos"
+                  ? "Intenta ajustar los filtros de búsqueda"
+                  : "Crea tu primera orden de trabajo."}
+              </p>
+              {!searchTerm && filterEstado === "todos" && (
+                <button
+                  onClick={() => {
+                    resetForm();
+                    setShowModal(true);
+                  }}
+                  className="btn-primary px-4 py-2 text-sm"
+                >
+                  <PlusIcon className="w-4 h-4 inline mr-2" />
+                  Crear primera orden
+                </button>
+              )}
             </div>
+          ) : (
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead className="bg-gray-50 dark:bg-gray-800">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Cliente
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Moto
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Servicio
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Estado
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Total
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Fecha
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Acciones
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
+                {filteredOrdenes.map((orden) => {
+                  const totalOrden = calcularTotalOrden(orden);
+                  return (
+                    <tr
+                      key={orden.id}
+                      className="hover:bg-gray-50 dark:hover:bg-gray-800"
+                    >
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="flex-shrink-0 h-8 w-8 flex items-center justify-center bg-blue-100 dark:bg-blue-900 rounded-lg">
+                            <UserIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                          </div>
+                          <div className="ml-3">
+                            <div className="text-sm font-medium text-gray-900 dark:text-white truncate max-w-[150px]">
+                              {orden.cliente_nombre}
+                            </div>
+                            {orden.cliente_telefono && (
+                              <div className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[150px]">
+                                {orden.cliente_telefono}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className="text-sm text-gray-900 dark:text-white truncate max-w-[120px]">
+                          {orden.moto_marca || "N/A"}{" "}
+                          {orden.moto_modelo || ""}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className="text-sm text-gray-900 dark:text-white max-w-[200px] truncate">
+                          {orden.problema || "Sin descripción"}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span
+                          className={`badge ${getEstadoColor(
+                            orden.estado
+                          )} text-xs`}
+                        >
+                          {orden.estado}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <CurrencyDollarIcon className="w-4 h-4 text-green-500 mr-1" />
+                          <span className="text-sm font-semibold text-green-600 dark:text-green-400">
+                            {formatPrecio(totalOrden)}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                        {new Date(
+                          orden.created_at
+                        ).toLocaleDateString("es-CL")}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm font-medium">
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => handleEdit(orden)}
+                            className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1"
+                            title="Editar orden"
+                          >
+                            <PencilIcon className="w-4 h-4" />
+                            <span className="hidden xl:inline">
+                              Editar
+                            </span>
+                          </button>
+                          <button
+                            onClick={() => {
+                              setSelectedOrdenForActions(orden);
+                              setShowActionsModal(true);
+                            }}
+                            className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 flex items-center gap-1"
+                            title="Más acciones"
+                          >
+                            <ArrowPathIcon className="w-4 h-4" />
+                            <span className="hidden xl:inline">
+                              Acciones
+                            </span>
+                          </button>
+                          <button
+                            onClick={() => handleDelete(orden.id)}
+                            className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 flex items-center gap-1"
+                            title="Eliminar orden"
+                          >
+                            <TrashIcon className="w-4 h-4" />
+                            <span className="hidden xl:inline">
+                              Eliminar
+                            </span>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+
           )}
         </div>
       </div>
 
-      {/* Modal Acciones */}
+      {/* Modal acciones */}
       {showActionsModal && selectedOrdenForActions && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4 z-50">
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md mx-2 sm:mx-0">
@@ -1305,7 +1310,8 @@ Mensaje generado automáticamente por el sistema Servi Moto`;
                     </div>
                     <div>
                       <strong>Repuestos:</strong>{" "}
-                      {selectedOrdenForActions.ordenes_repuestos?.length || 0}
+                      {selectedOrdenForActions.ordenes_repuestos?.length ||
+                        0}
                     </div>
                   </div>
                 </div>
@@ -1337,257 +1343,15 @@ Mensaje generado automáticamente por el sistema Servi Moto`;
                     Compartir por WhatsApp
                   </button>
                 </div>
-
-                <div className="flex justify-end mt-6">
-                  <button
-                    onClick={() => {
-                      setSelectedOrdenForActions(null);
-                      setShowActionsModal(false);
-                    }}
-                    className="btn-secondary px-4 py-2 text-sm sm:text-base"
-                  >
-                    Cerrar
-                  </button>
-                </div>
               </div>
-            </div>
-          </div>
-        </div>
-      )}
 
-      {/* Modal Detalle */}
-      {showDetalleModal && selectedOrdenDetalle && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center p-2 sm:p-4 z-50 overflow-y-auto pt-4 sm:pt-8">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-3xl mx-2 sm:mx-0 max-h-[90vh] overflow-y-auto">
-            <div className="p-4 sm:p-6">
-              <div className="flex justify-between items-center mb-4 sm:mb-6">
-                <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">
-                  Detalle de la Orden
-                </h3>
+              <div className="flex justify-end mt-6">
                 <button
                   onClick={() => {
-                    setShowDetalleModal(false);
-                    setSelectedOrdenDetalle(null);
+                    setSelectedOrdenForActions(null);
+                    setShowActionsModal(false);
                   }}
-                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                  title="Cerrar"
-                >
-                  <XMarkIcon className="w-6 h-6" />
-                </button>
-              </div>
-
-              <div className="border-b border-gray-200 dark:border-gray-700 mb-4 sm:mb-6 flex gap-2">
-                <button className="px-3 py-2 text-sm font-medium border-b-2 border-blue-600 text-blue-600 dark:text-blue-400">
-                  Resumen
-                </button>
-                <button
-                  className="px-3 py-2 text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
-                  onClick={() => {
-                    const el = document.getElementById(
-                      "orden-detalle-repuestos"
-                    );
-                    if (el)
-                      el.scrollIntoView({
-                        behavior: "smooth",
-                        block: "start",
-                      });
-                  }}
-                >
-                  Repuestos
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6">
-                <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
-                  <div className="flex items-center gap-2 mb-3">
-                    <UserIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                    <h4 className="font-medium text-blue-800 dark:text-blue-300">
-                      Información del Cliente
-                    </h4>
-                  </div>
-                  <div className="space-y-1 text-sm text-gray-700 dark:text-gray-300">
-                    <p>
-                      <span className="font-medium">Nombre: </span>
-                      {selectedOrdenDetalle.cliente_nombre ||
-                        "No especificado"}
-                    </p>
-                    <p>
-                      <span className="font-medium">Teléfono: </span>
-                      {selectedOrdenDetalle.cliente_telefono ||
-                        "No registrado"}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
-                  <div className="flex items-center gap-2 mb-3">
-                    <WrenchScrewdriverIcon className="w-5 h-5 text-gray-700 dark:text-gray-300" />
-                    <h4 className="font-medium text-gray-900 dark:text-white">
-                      Moto y Estado
-                    </h4>
-                  </div>
-                  <div className="space-y-1 text-sm text-gray-700 dark:text-gray-300">
-                    <p>
-                      <span className="font-medium">Moto: </span>
-                      {selectedOrdenDetalle.moto_marca || "Sin marca"}{" "}
-                      {selectedOrdenDetalle.moto_modelo || ""}
-                    </p>
-                    <p>
-                      <span className="font-medium">Estado: </span>
-                      <span
-                        className={`badge ${getEstadoColor(
-                          selectedOrdenDetalle.estado
-                        )}`}
-                      >
-                        {selectedOrdenDetalle.estado}
-                      </span>
-                    </p>
-                    <p>
-                      <span className="font-medium">Fecha: </span>
-                      {selectedOrdenDetalle.created_at
-                        ? new Date(
-                            selectedOrdenDetalle.created_at
-                          ).toLocaleDateString("es-CL")
-                        : "-"}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mb-6">
-                <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-2">
-                  Descripción del servicio
-                </h4>
-                <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg text-sm text-gray-700 dark:text-gray-300">
-                  {selectedOrdenDetalle.problema || "Sin descripción"}
-                </div>
-              </div>
-
-              {/* Info de servicio predefinido en detalle, si existe */}
-              {selectedOrdenDetalle.tipo_servicio && (
-                <div className="mb-6 bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
-                  {(() => {
-                    const servicio = serviciosPredefinidos.find(
-                      (s) => s.id === selectedOrdenDetalle.tipo_servicio
-                    );
-                    if (!servicio) return null;
-                    return (
-                      <>
-                        <h4 className="text-sm font-medium text-blue-800 dark:text-blue-300 mb-1">
-                          Servicio predefinido: {servicio.nombre}
-                        </h4>
-                        <p className="text-xs text-gray-600 dark:text-gray-300 mb-1">
-                          Tiempo estimado: {servicio.tiempoEstimado}
-                        </p>
-                        <p className="text-xs text-gray-600 dark:text-gray-300 mb-1">
-                          Repuestos comunes:{" "}
-                          {servicio.repuestos.join(", ")}
-                        </p>
-                        <p className="text-xs text-blue-600 dark:text-blue-400">
-                          Próxima mantención recomendada:{" "}
-                          {servicio.proximo}
-                        </p>
-                      </>
-                    );
-                  })()}
-                </div>
-              )}
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
-                <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg text-sm">
-                  <p className="text-gray-500 dark:text-gray-400">Servicio</p>
-                  <p className="font-semibold text-gray-900 dark:text-white">
-                    {formatPrecio(
-                      selectedOrdenDetalle.precio_servicio || 0
-                    )}
-                  </p>
-                </div>
-                <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg text-sm">
-                  <p className="text-gray-500 dark:text-gray-400">
-                    Mano de obra
-                  </p>
-                  <p className="font-semibold text-gray-900 dark:text-white">
-                    {formatPrecio(
-                      selectedOrdenDetalle.precio_mano_obra || 0
-                    )}
-                  </p>
-                </div>
-                <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg text-sm">
-                  <p className="text-gray-500 dark:text-gray-400">Total</p>
-                  <p className="font-semibold text-green-600 dark:text-green-400">
-                    {formatPrecio(calcularTotalOrden(selectedOrdenDetalle))}
-                  </p>
-                </div>
-              </div>
-
-              <div id="orden-detalle-repuestos" className="mb-4">
-                <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-2">
-                  Repuestos utilizados
-                </h4>
-                {selectedOrdenDetalle.ordenes_repuestos &&
-                selectedOrdenDetalle.ordenes_repuestos.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full text-sm">
-                      <thead>
-                        <tr className="bg-gray-50 dark:bg-gray-800">
-                          <th className="px-3 py-2 text-left text-gray-600 dark:text-gray-300">
-                            Producto
-                          </th>
-                          <th className="px-3 py-2 text-center text-gray-600 dark:text-gray-300">
-                            Cantidad
-                          </th>
-                          <th className="px-3 py-2 text-right text-gray-600 dark:text-gray-300">
-                            Precio
-                          </th>
-                          <th className="px-3 py-2 text-right text-gray-600 dark:text-gray-300">
-                            Subtotal
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {selectedOrdenDetalle.ordenes_repuestos.map(
-                          (rep, index) => {
-                            const precio = rep.inventario?.precio || 0;
-                            const subtotal = precio * (rep.cantidad || 0);
-                            return (
-                              <tr
-                                key={index}
-                                className="border-b border-gray-100 dark:border-gray-700"
-                              >
-                                <td className="px-3 py-2 text-gray-800 dark:text-gray-200">
-                                  {rep.inventario?.nombre ||
-                                    "Producto no encontrado"}
-                                </td>
-                                <td className="px-3 py-2 text-center text-gray-700 dark:text-gray-300">
-                                  {rep.cantidad}
-                                </td>
-                                <td className="px-3 py-2 text-right text-gray-700 dark:text-gray-300">
-                                  {formatPrecio(precio)}
-                                </td>
-                                <td className="px-3 py-2 text-right text-gray-700 dark:text-gray-300">
-                                  {formatPrecio(subtotal)}
-                                </td>
-                              </tr>
-                            );
-                          }
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Esta orden no tiene repuestos asociados.
-                  </p>
-                )}
-              </div>
-
-              <div className="flex justify-end mt-4">
-                <button
-                  onClick={() => {
-                    setShowDetalleModal(false);
-                    setSelectedOrdenDetalle(null);
-                  }}
-                  className="btn-secondary px-4 py-2 text-sm"
+                  className="btn-secondary px-4 py-2 text-sm sm:text-base"
                 >
                   Cerrar
                 </button>
@@ -1597,7 +1361,7 @@ Mensaje generado automáticamente por el sistema Servi Moto`;
         </div>
       )}
 
-      {/* Modal Crear/Editar Orden */}
+      {/* Modal crear/editar orden */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center p-2 sm:p-4 z-50 overflow-y-auto pt-4 sm:pt-8">
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-4xl mx-2 sm:mx-0 max-h-[90vh] overflow-y-auto">
@@ -1607,7 +1371,10 @@ Mensaje generado automáticamente por el sistema Servi Moto`;
                   {editingOrden ? "Editar Orden" : "Nueva Orden de Trabajo"}
                 </h3>
                 <button
-                  onClick={resetForm}
+                  onClick={() => {
+                    setShowModal(false);
+                    resetForm();
+                  }}
                   className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                   title="Cerrar"
                 >
@@ -1615,7 +1382,10 @@ Mensaje generado automáticamente por el sistema Servi Moto`;
                 </button>
               </div>
 
-              <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+              <form
+                onSubmit={handleSubmit}
+                className="space-y-4 sm:space-y-6"
+              >
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
                     <label className="input-label">
@@ -1626,10 +1396,10 @@ Mensaje generado automáticamente por el sistema Servi Moto`;
                       required
                       value={form.cliente_nombre}
                       onChange={(e) =>
-                        setForm({
-                          ...form,
+                        setForm((prev) => ({
+                          ...prev,
                           cliente_nombre: e.target.value,
-                        })
+                        }))
                       }
                       className="input-field text-sm sm:text-base"
                       placeholder="Ej: Juan Pérez"
@@ -1642,16 +1412,16 @@ Mensaje generado automáticamente por el sistema Servi Moto`;
                       type="tel"
                       value={form.cliente_telefono}
                       onChange={(e) =>
-                        setForm({
-                          ...form,
+                        setForm((prev) => ({
+                          ...prev,
                           cliente_telefono: e.target.value,
-                        })
+                        }))
                       }
                       className="input-field text-sm sm:text-base"
                       placeholder="Ej: 912345678"
                     />
                     <p className="text-xs text-gray-500 mt-1">
-                      Para compartir la orden por WhatsApp
+                      Para compartir la orden por WhatsApp.
                     </p>
                   </div>
                 </div>
@@ -1665,7 +1435,10 @@ Mensaje generado automáticamente por el sistema Servi Moto`;
                       type="text"
                       value={form.moto_marca}
                       onChange={(e) =>
-                        setForm({ ...form, moto_marca: e.target.value })
+                        setForm((prev) => ({
+                          ...prev,
+                          moto_marca: e.target.value,
+                        }))
                       }
                       className="input-field text-sm sm:text-base"
                       placeholder="Ej: Honda, Yamaha, Suzuki"
@@ -1679,118 +1452,15 @@ Mensaje generado automáticamente por el sistema Servi Moto`;
                       type="text"
                       value={form.moto_modelo}
                       onChange={(e) =>
-                        setForm({ ...form, moto_modelo: e.target.value })
+                        setForm((prev) => ({
+                          ...prev,
+                          moto_modelo: e.target.value,
+                        }))
                       }
                       className="input-field text-sm sm:text-base"
                       placeholder="Ej: CBR 600, R6, GSX-R"
                     />
                   </div>
-                </div>
-
-                {/* Servicios predefinidos */}
-                <div className="border border-blue-100 dark:border-blue-900/40 rounded-lg p-3 sm:p-4 mb-2">
-                  <div className="flex items-center justify-between mb-3">
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-800 dark:text-gray-200">
-                        Servicios predefinidos
-                      </h4>
-                      <p className="text-xs text-gray-500">
-                        Selecciona un servicio estándar para autocompletar la
-                        orden.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <select
-                      value={selectedServicioId}
-                      onChange={(e) => {
-                        const id = e.target.value;
-                        setSelectedServicioId(id);
-                        const servicio = serviciosPredefinidos.find(
-                          (s) => s.id === id
-                        );
-                        if (servicio) {
-                          setForm((prev) => ({
-                            ...prev,
-                            problema: prev.problema
-                              ? prev.problema
-                              : `${servicio.nombre}.\n\nTiempo estimado: ${servicio.tiempoEstimado}.`,
-                          }));
-
-                          if (selectedRepuestos.length === 0 && productos.length > 0) {
-                            const repSugeridos = servicio.repuestos
-                              .map((nombreRep) => {
-                                const prod = productos.find(
-                                  (p) =>
-                                    p.nombre.toLowerCase() ===
-                                    nombreRep.toLowerCase()
-                                );
-                                if (!prod) return null;
-                                return {
-                                  id: prod.id,
-                                  nombre: prod.nombre,
-                                  cantidad: 1,
-                                };
-                              })
-                              .filter(Boolean);
-                            if (repSugeridos.length > 0) {
-                              setSelectedRepuestos(repSugeridos);
-                            }
-                          }
-                        }
-                      }}
-                      className="input-field text-sm sm:text-base"
-                    >
-                      <option value="">Seleccionar servicio</option>
-                      {serviciosPredefinidos.map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {s.nombre}
-                        </option>
-                      ))}
-                    </select>
-
-                    <div className="flex items-center gap-2">
-                      <input
-                        id="recordarProxima"
-                        type="checkbox"
-                        checked={recordarProxima}
-                        onChange={(e) => setRecordarProxima(e.target.checked)}
-                        className="h-4 w-4 text-blue-600 border-gray-300 rounded"
-                      />
-                      <label
-                        htmlFor="recordarProxima"
-                        className="text-xs sm:text-sm text-gray-700 dark:text-gray-300"
-                      >
-                        Incluir próxima mantención en el mensaje al cliente
-                      </label>
-                    </div>
-                  </div>
-
-                  {selectedServicioId && (
-                    <div className="mt-3 bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
-                      {(() => {
-                        const servicio = serviciosPredefinidos.find(
-                          (s) => s.id === selectedServicioId
-                        );
-                        if (!servicio) return null;
-                        return (
-                          <>
-                            <p className="text-xs text-gray-500 mb-1">
-                              Checklist técnico sugerido:
-                            </p>
-                            <ul className="list-disc list-inside text-xs text-gray-700 dark:text-gray-300 space-y-1 mb-2">
-                              {servicio.checklist.map((item, idx) => (
-                                <li key={idx}>{item}</li>
-                              ))}
-                            </ul>
-                            <p className="text-xs text-blue-600 dark:text-blue-400">
-                              {servicio.proximo}
-                            </p>
-                          </>
-                        );
-                      })()}
-                    </div>
-                  )}
                 </div>
 
                 <div>
@@ -1802,10 +1472,13 @@ Mensaje generado automáticamente por el sistema Servi Moto`;
                     rows={3}
                     value={form.problema}
                     onChange={(e) =>
-                      setForm({ ...form, problema: e.target.value })
+                      setForm((prev) => ({
+                        ...prev,
+                        problema: e.target.value,
+                      }))
                     }
                     className="input-field resize-none text-sm sm:text-base"
-                    placeholder="Describa el problema o servicio requerido..."
+                    placeholder="Describe el problema o servicio requerido..."
                   />
                 </div>
 
@@ -1831,7 +1504,9 @@ Mensaje generado automáticamente por el sistema Servi Moto`;
                     </div>
                   </div>
                   <div>
-                    <label className="input-label">Mano de obra</label>
+                    <label className="input-label">
+                      Mano de obra
+                    </label>
                     <div className="relative">
                       <CurrencyDollarIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                       <input
@@ -1852,10 +1527,12 @@ Mensaje generado automáticamente por el sistema Servi Moto`;
 
                 <div className="bg-blue-50 dark:bg-blue-900/20 p-3 sm:p-4 rounded-lg">
                   <div className="flex justify-between items-center">
-                    <span className="font-medium text-blue-800 dark:text-blue-300 text-sm sm:text-base">
-                      Total estimado
-                    </span>
-                    <span className="text-xl sm:text-2xl font-bold text-blue-800 dark:text-blue-300">
+                    <div>
+                      <span className="font-medium text-blue-800 dark:text-blue-300 text-sm sm:text-base">
+                        Total estimado
+                      </span>
+                    </div>
+                    <div className="text-xl sm:text-2xl font-bold text-blue-800 dark:text-blue-300">
                       {formatPrecio(
                         parsePrecioInput(form.precio_servicio) +
                           parsePrecioInput(form.precio_mano_obra) +
@@ -1865,18 +1542,21 @@ Mensaje generado automáticamente por el sistema Servi Moto`;
                             );
                             return (
                               sum +
-                              (producto?.precio || 0) * (rep.cantidad || 0)
+                              ((producto?.precio || 0) *
+                                (rep.cantidad || 0))
                             );
                           }, 0)
                       )}
-                    </span>
+                    </div>
                   </div>
                   <div className="text-xs sm:text-sm text-blue-600 dark:text-blue-400 mt-2">
                     Incluye Servicio{" "}
                     {formatPrecio(parsePrecioInput(form.precio_servicio))}
                     , Mano de obra{" "}
-                    {formatPrecio(parsePrecioInput(form.precio_mano_obra))} y
-                    Repuestos{" "}
+                    {formatPrecio(
+                      parsePrecioInput(form.precio_mano_obra)
+                    )}
+                    , Repuestos{" "}
                     {formatPrecio(
                       selectedRepuestos.reduce((sum, rep) => {
                         const producto = productos.find(
@@ -1884,7 +1564,8 @@ Mensaje generado automáticamente por el sistema Servi Moto`;
                         );
                         return (
                           sum +
-                          (producto?.precio || 0) * (rep.cantidad || 0)
+                          ((producto?.precio || 0) *
+                            (rep.cantidad || 0))
                         );
                       }, 0)
                     )}
@@ -1899,12 +1580,17 @@ Mensaje generado automáticamente por el sistema Servi Moto`;
                     <select
                       value={form.estado}
                       onChange={(e) =>
-                        setForm({ ...form, estado: e.target.value })
+                        setForm((prev) => ({
+                          ...prev,
+                          estado: e.target.value,
+                        }))
                       }
                       className="input-field text-sm sm:text-base"
                     >
                       <option value="Pendiente">Pendiente</option>
-                      <option value="En reparación">En reparación</option>
+                      <option value="En reparación">
+                        En reparación
+                      </option>
                       <option value="Finalizada">Finalizada</option>
                     </select>
                   </div>
@@ -1918,7 +1604,6 @@ Mensaje generado automáticamente por el sistema Servi Moto`;
                   </div>
                 </div>
 
-                {/* Repuestos */}
                 <div className="border-t border-gray-200 dark:border-gray-700 pt-4 sm:pt-6">
                   <div className="flex justify-between items-center mb-3 sm:mb-4">
                     <div>
@@ -1953,9 +1638,11 @@ Mensaje generado automáticamente por el sistema Servi Moto`;
                         const producto = productos.find(
                           (p) => p.id === repuesto.id
                         );
-                        const precioUnitario = producto?.precio || 0;
+                        const precioUnitario =
+                          producto?.precio || 0;
                         const subtotal =
-                          precioUnitario * (repuesto.cantidad || 0);
+                          precioUnitario *
+                          (repuesto.cantidad || 0);
 
                         return (
                           <div
@@ -1983,6 +1670,7 @@ Mensaje generado automáticamente por el sistema Servi Moto`;
                                     key={producto.id}
                                     value={producto.id}
                                     disabled={producto.stock <= 0}
+                                    title={`Stock disponible: ${producto.stock}`}
                                   >
                                     {producto.nombre} - Stock{" "}
                                     {producto.stock} -{" "}
@@ -2002,10 +1690,13 @@ Mensaje generado automáticamente por el sistema Servi Moto`;
                                     updateRepuesto(
                                       index,
                                       "cantidad",
-                                      parseInt(e.target.value || "1", 10)
+                                      parseInt(
+                                        e.target.value || "1",
+                                        10
+                                      )
                                     )
                                   }
-                                  className="w-16 input-field py-1 text-center text-sm"
+                                  className="w-16 input-field py-1 text-center text-sm hide-spin-buttons"
                                 />
                               </div>
                               <div className="text-xs text-gray-500 w-16 text-right">
@@ -2013,7 +1704,9 @@ Mensaje generado automáticamente por el sistema Servi Moto`;
                               </div>
                               <button
                                 type="button"
-                                onClick={() => removeRepuesto(index)}
+                                onClick={() =>
+                                  removeRepuesto(index)
+                                }
                                 className="text-red-600 hover:text-red-800 p-1"
                                 title="Quitar repuesto"
                               >
@@ -2030,13 +1723,16 @@ Mensaje generado automáticamente por el sistema Servi Moto`;
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 pt-4 sm:pt-6 border-t border-gray-200 dark:border-gray-700">
                   <div className="text-sm text-gray-500 order-2 sm:order-1">
                     {editingOrden
-                      ? "Editando orden existente. Los campos marcados con * son obligatorios."
+                      ? "Editando orden existente."
                       : "Los campos marcados con * son obligatorios."}
                   </div>
                   <div className="flex gap-2 sm:gap-3 order-1 sm:order-2">
                     <button
                       type="button"
-                      onClick={resetForm}
+                      onClick={() => {
+                        setShowModal(false);
+                        resetForm();
+                      }}
                       className="flex-1 sm:flex-none btn-secondary px-4 py-2 text-sm sm:text-base"
                     >
                       Cancelar
@@ -2069,4 +1765,5 @@ Mensaje generado automáticamente por el sistema Servi Moto`;
 };
 
 export default Ordenes;
+
 

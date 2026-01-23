@@ -1,4 +1,4 @@
-# Servi Moto - Sistema de Gestión de Taller Mecánico
+# Servi Moto - Sistema de Gestión de Invenatario
 
 Aplicación web para la gestión integral de un taller mecánico de motos, que permite administrar inventario, órdenes de trabajo, calendario de citas y generar documentos en PDF, todo integrado con Supabase como backend. [file:3][file:5][file:10][file:13][file:14][file:16]
 

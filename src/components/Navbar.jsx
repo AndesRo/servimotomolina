@@ -97,12 +97,14 @@ const Navbar = () => {
 
   const isActive = (path) => location.pathname === path;
 
-  const navItems = [
-    { path: "/", label: "Dashboard", icon: HomeIcon },
-    { path: "/inventario", label: "Inventario", icon: CubeIcon },
-    { path: "/ordenes", label: "Órdenes", icon: ClipboardDocumentListIcon },
-    { path: "/calendario", label: "Calendario", icon: CalendarIcon },
-  ];
+const navItems = [
+  { path: "/", label: "Dashboard", icon: HomeIcon },
+  { path: "/inventario", label: "Inventario", icon: CubeIcon, badge: stats.productosBajoStock },
+  { path: "/ordenes", label: "Órdenes", icon: ClipboardDocumentListIcon, badge: stats.ordenesActivas },
+  { path: "/presupuestos", label: "Presupuestos", icon: ClipboardDocumentListIcon },
+  { path: "/calendario", label: "Calendario", icon: CalendarIcon },
+];
+
 
   const handleSearch = (e) => {
     e.preventDefault();
