@@ -13,9 +13,9 @@ const Login = lazy(() => import("./pages/Login"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Inventario = lazy(() => import("./pages/Inventario"));
 const Ordenes = lazy(() => import("./pages/Ordenes"));
-const Calendario = lazy(() => import("./pages/Calendario"));
+const Calendario = lazy(() => import("./pages/Calendario.jsx"));
+const Presupuestos = lazy(() => import("./pages/presupuestos.jsx")); // ← NUEVO
 
-// Ruta privada
 const PrivateRoute = ({ children }) => {
   const { user, loading } = useAppContext();
 
@@ -27,18 +27,16 @@ const PrivateRoute = ({ children }) => {
     );
   }
 
-  return user ? children : <Navigate to="/login" replace />;
+  return user ? children : <Navigate to="/login" />;
 };
 
-// Layout sin sidebar, solo Navbar + contenido
-const Layout = ({ children }) => {
-  return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <Navbar />
-      <main className="pt-16 md:pt-20">{children}</main>
-    </div>
-  );
-};
+// Layout sin Sidebar - solo Navbar
+const Layout = ({ children }) => (
+  <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <Navbar />
+    <main className="pt-16 md:pt-20">{children}</main>
+  </div>
+);
 
 function App() {
   return (
@@ -87,6 +85,17 @@ function App() {
           />
 
           <Route
+            path="/presupuestos"
+            element={
+              <PrivateRoute>
+                <Layout>
+                  <Presupuestos />
+                </Layout>
+              </PrivateRoute>
+            }
+          />
+
+          <Route
             path="/calendario"
             element={
               <PrivateRoute>
@@ -97,8 +106,7 @@ function App() {
             }
           />
 
-          {/* Redirección por defecto */}
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </Suspense>
     </Router>
@@ -106,5 +114,4 @@ function App() {
 }
 
 export default App;
-
 
